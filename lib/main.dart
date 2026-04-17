@@ -2,7 +2,7 @@
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
-  runApp(const TeleAppointmentApp());
+  runApp(const MaterialApp(home: LoginScreen()));
 }
 
 class TeleAppointmentApp extends StatelessWidget {
@@ -314,19 +314,19 @@ class DoctorDashboard extends StatelessWidget {
           const SizedBox(height: 12),
           const ScheduleTile(
             time: '3:30 م',
-            patient: 'نورة الهاجري',
+            patient: ' ابراهيم الشيخ ',
             reason: 'متابعة ضغط العين',
           ),
           const SizedBox(height: 12),
           const ScheduleTile(
             time: '5:00 م',
-            patient: 'سالم المطيري',
+            patient: 'احمد محمد ',
             reason: 'تحضير لعملية ليزر',
           ),
           const SizedBox(height: 12),
           const ScheduleTile(
             time: '6:15 م',
-            patient: 'ريم العتيبي',
+            patient: 'ريم حسن ',
             reason: 'تقرير أشعة استشاري شبكيةية',
           ),
           const SizedBox(height: 24),
@@ -978,6 +978,66 @@ class AdminActionTile extends StatelessWidget {
           ),
           const Icon(Icons.arrow_back_ios_new, size: 16),
         ],
+      ),
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _userController = TextEditingController();
+
+  void _navigateToDashboard() {
+    String user = _userController.text.trim().toLowerCase();
+
+    if (user == "admin") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const AdminDashboard()),
+      );
+    } else if (user == "doctor") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const DoctorDashboard()),
+      );
+      // هنا استبدل DoctorDashboard باسم الكلاس الحقيقي عندك لواجهة الدكتور
+      // Navigator.push(context, MaterialPageRoute(builder: (context) => const DoctorDashboard()));
+    } else if (user == "patient") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const PatientDashboard()),
+      );
+      // هنا لواجهة المريض
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("تسجيل الدخول")),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _userController,
+              decoration: const InputDecoration(
+                labelText: "  Who Are You: Admin,  Doctor,  Patient ",
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _navigateToDashboard,
+              child: const Text("Select "),
+            ),
+          ],
+        ),
       ),
     );
   }
