@@ -37,6 +37,7 @@ dependencies:
   google_fonts: ^6.1.0
 
 dev_dependencies:
+  flutter_launcher_icons: "^0.13.1"
   flutter_test:
     sdk: flutter
 
@@ -88,3 +89,11 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+# في نهاية الملف تماماً (بعد سطر 86 في الصورة b953bbcc)
+flutter_launcher_icons:
+   android: true
+   ios: true
+   image_path: "assets/mawaeed.jpeg"
+  # اختياري: لون الخلفية للأندرويد (Adaptive Icon)
+  # adaptive_icon_background: "#FFFFFF" 
+  # adaptive_icon_foreground: "assets/logo_mawedi_foreground.png"
