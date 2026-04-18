@@ -13,6 +13,9 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _userController = TextEditingController();
   String? selectedRole;
+  final formKey = GlobalKey<FormState>(); // مفتاح الفورم للتأكد من البيانات
+  final emailController = TextEditingController(); // لإيميل
+  final passwordController = TextEditingController(); // للباسورد
   void _navigateToDashboard() {
     String user = _userController.text.trim().toLowerCase();
 
@@ -53,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
               right: -50,
               child: CircleAvatar(
                 radius: 100,
-                backgroundColor: const Color(0xFF147A74).withOpacity(0.05),
+                backgroundColor: Color(0xFF147A74).withOpacity(0.05),
               ),
             ),
 
@@ -74,14 +77,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.health_and_safety_rounded,
-                          size: 80,
-                          color: Color(0xFF147A74),
+                        child: Column(
+                          // لازم تستخدم Column عشان ترص الحاجات تحت بعض
+                          children: [
+                            const Icon(
+                              Icons.health_and_safety_rounded,
+                              size: 80,
+                              color: Color(0xFF147A74),
+                            ),
+                          ],
                         ),
                       ),
-
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30),
 
                       const Text(
                         "تسجيل الدخول",
@@ -95,83 +102,168 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 50),
 
                       // حقل اختيار نوع الحساب (Dropdown)
-                      Container(
-                        width:
-                            MediaQuery.of(context).size.width *
-                            0.8, // عرض متناسق
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 15,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          alignment: AlignmentDirectional.center,
-                          decoration: const InputDecoration(
-                            hintText: 'اختر نوع الحساب',
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 18,
-                            ),
-                            border: InputBorder.none,
-                          ),
-                          // استايل القائمة نفسها عند الفتح
-                          dropdownColor: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          value: selectedRole,
-                          items: ['Admin', 'Doctor', 'Patient'].map((
-                            String role,
-                          ) {
-                            return DropdownMenuItem<String>(
-                              value: role,
-                              alignment: AlignmentDirectional.center,
-                              child: Text(
-                                role,
-                                style: const TextStyle(
-                                  color: Color(0xFF0D2137),
-                                ),
+                      if (selectedRole == null) ...[
+                        Container(
+                          width:
+                              MediaQuery.of(context).size.width *
+                              0.8, // عرض متناسق
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (newValue) {
-                            setState(() {
-                              selectedRole = newValue;
-                              _userController.text = newValue!.toLowerCase();
-                            });
-                          },
+                            ],
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            alignment: AlignmentDirectional.center,
+                            decoration: const InputDecoration(
+                              hintText: 'اختر نوع الحساب',
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 18,
+                              ),
+                              border: InputBorder.none,
+                            ),
+                            // استايل القائمة نفسها عند الفتح
+                            dropdownColor: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            value: selectedRole,
+                            items: ['Admin', 'Doctor', 'Patient'].map((
+                              String role,
+                            ) {
+                              return DropdownMenuItem<String>(
+                                value: role,
+                                alignment: AlignmentDirectional.center,
+                                child: Text(
+                                  role,
+                                  style: const TextStyle(
+                                    color: Color(0xFF0D2137),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedRole = newValue;
+                                _userController.text = newValue!.toLowerCase();
+                              });
+                            },
+                          ),
                         ),
-                      ),
+                      ],
 
                       const SizedBox(height: 25),
 
-                      // زر الدخول
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.8,
-                        child: ElevatedButton(
+                      // ابدأ اكتب الـ if هنا مباشرة
+                      if (selectedRole != null) ...[
+                        // 1. زر الرجوع والعنوان
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back_ios_new,
+                                color: Color(0xFF147A74),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  selectedRole =
+                                      null; // بيرجع يظهر الـ Dropdown
+                                });
+                              },
+                            ),
+                            Text(
+                              'تسجيل الدخول كـ $selectedRole',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF147A74),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ), // مسافة بسيطة قبل حقل الإيميل
+                        // 1. حقل الإيميل
+                        TextFormField(
+                          controller: emailController,
+                          decoration: const InputDecoration(
+                            labelText: 'الإيميل',
+                            prefixIcon: Icon(Icons.email),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // 2. حقل كلمة المرور
+                        TextFormField(
+                          controller: passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'كلمة المرور',
+                            prefixIcon: Icon(Icons.lock),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+
+                        // 3. زر تسجيل الدخول
+                        // 3. زر تسجيل الدخول (يظهر بعد اختيار الحساب)
+                        ElevatedButton(
                           onPressed: _navigateToDashboard,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF147A74),
-                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            backgroundColor: const Color(
+                              0xFF147A74,
+                            ), // نفس اللون الأخضر
+                            minimumSize: const Size(
+                              double.infinity,
+                              50,
+                            ), // عرض كامل عشان التناسق
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(
+                                10,
+                              ), // حواف متناسقة مع الحقول
                             ),
-                            elevation: 0,
+                            elevation: 2, // ظل خفيف للجمالية
                           ),
                           child: const Text(
-                            "دخول",
+                            'تسجيل الدخول',
                             style: TextStyle(
+                              color: Colors.white, // اللون الأبيض للنص
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
                             ),
                           ),
                         ),
-                      ),
+                      ], // نهاية الـ if
+
+                      if (selectedRole == null) ...[
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          child: ElevatedButton(
+                            onPressed: () {}, // خليه فاضي حالياً
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF147A74),
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            child: const Text(
+                              "دخول",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ], // ده الشرط بتاع اظهار الزر الاخضر الكبير فقط لما تكون لسة ما اخترت حاجة
+                      // زر الدخول
                     ],
                   ),
                 ),
