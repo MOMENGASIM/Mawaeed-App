@@ -1,13 +1,23 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'login_screen.dart';
 import 'admin_dashboard.dart';
 import 'doctor_dashboard.dart';
 import 'patient_dashboard.dart';
 
-void main() {
-  runApp(const MaterialApp(home: LoginScreen()));
+void main() async {
+  // السطرين ديل هم اللي بيربطوا الشغل اللي عملناه في الـ Gradle بالسيرفر
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: PatientDashboard(), // بيبدأ بصفحة اللوجن زي ما خططت في الـ Sequence
+    ),
+  );
 }
 
 class TeleAppointmentApp extends StatelessWidget {

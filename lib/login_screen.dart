@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'admin_dashboard.dart';
 import 'doctor_dashboard.dart';
 import 'patient_dashboard.dart';
 import 'sign_up_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,58 +14,137 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _userController = TextEditingController();
   String? selectedRole;
-  final formKey = GlobalKey<FormState>(); // مفتاح الفورم للتأكد من البيانات
-  final emailController = TextEditingController(); // لإيميل
-  final passwordController = TextEditingController(); // للباسورد
-  void _navigateToDashboard() {
-    String user = _userController.text.trim().toLowerCase();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  bool isLoading = false;
+  // --- إضافة كود الذاكرة هنا ---
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedRole();
+  }
 
-    if (user == "admin") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const AdminDashboard()),
-      );
-    } else if (user == "doctor") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const DoctorDashboard()),
-      );
-      // هنا استبدل DoctorDashboard باسم الكلاس الحقيقي عندك لواجهة الدكتور
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => const DoctorDashboard()));
-    } else if (user == "patient") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const PatientDashboard()),
-      );
-      // هنا لواجهة المريض
+  Future<void> _checkSavedRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? role = prefs.getString('my_role');
+    if (role != null) {
+      setState(() {
+        selectedRole = role;
+      });
     }
+  }
+
+  Future<void> _saveRole(String role) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('my_role', role);
+  }
+
+  // الوظيفة الأساسية لتسجيل الدخول والتحقق
+  Future<void> _handleLogin() async {
+    // 1. التحقق من المدخلات
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("الرجاء إدخال الإيميل وكلمة المرور")),
+      );
+      return;
+    }
+
+    // 2. التحقق من اختيار النوع (Role)
+    if (selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("الرجاء اختيار نوع الحساب أولاً")),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      // 3. محاولة تسجيل الدخول عبر Firebase
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+
+      if (userCredential.user != null) {
+        if (!mounted) return;
+
+        // 4. التوجيه بناءً على الـ Role
+        Widget nextScreen;
+        if (selectedRole == "Admin") {
+          nextScreen = const AdminDashboard();
+        } else if (selectedRole == "Doctor") {
+          nextScreen = const DoctorDashboard();
+        } else {
+          nextScreen = const PatientDashboard();
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => nextScreen),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      // هنا "الجاسوس" حيطبع ليك السبب الحقيقي في الـ Console تحت
+      print("🚨 خطأ من فايربيز (الكود): ${e.code}");
+      print("🚨 رسالة الخطأ: ${e.message}");
+
+      if (!mounted) return;
+
+      // رسائل تنبيهية للمستخدم حسب نوع الخطأ
+      String errorMessage = "حدث خطأ أثناء تسجيل الدخول";
+
+      if (e.code == 'user-not-found') {
+        errorMessage = "هذا الحساب غير موجود";
+      } else if (e.code == 'wrong-password') {
+        errorMessage = "كلمة المرور غير صحيحة";
+      } else if (e.code == 'network-request-failed') {
+        errorMessage = "تأكد من اتصالك بالإنترنت";
+      } else if (e.code == 'too-many-requests') {
+        errorMessage = "محاولات كثيرة خاطئة، جرب لاحقاً";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      // لأي أخطاء برمجية أخرى
+      print("🚨 خطأ عام: $e");
+    } finally {
+      // الخطوة دي هي اللي بتضمن إن اللفة تقيف سواء نجح أو فشل
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // استخدمنا backgroundColor لضمان عدم ظهور شاشة بيضاء فاقعة
       backgroundColor: const Color(0xFFF8FAFF),
       body: SizedBox(
         width: double.infinity,
         height: double.infinity,
         child: Stack(
           children: [
-            // 1. الدائرة الديكورية في الخلفية
             Positioned(
               top: -50,
               right: -50,
               child: CircleAvatar(
                 radius: 100,
-                backgroundColor: Color(0xFF147A74).withOpacity(0.05),
+                backgroundColor: const Color(0xFF147A74).withOpacity(0.05),
               ),
             ),
-
-            // 2. المحتوى الأساسي
             Center(
-              // لضمان توسيط كل شيء في الشاشة
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Padding(
@@ -71,26 +152,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // الأيقونة الطبية
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
-                        child: Column(
-                          // لازم تستخدم Column عشان ترص الحاجات تحت بعض
-                          children: [
-                            const Icon(
-                              Icons.health_and_safety_rounded,
-                              size: 80,
-                              color: Color(0xFF147A74),
-                            ),
-                          ],
+                        child: const Icon(
+                          Icons.health_and_safety_rounded,
+                          size: 80,
+                          color: Color(0xFF147A74),
                         ),
                       ),
-                      SizedBox(height: 30),
-
+                      const SizedBox(height: 30),
                       const Text(
                         "تسجيل الدخول",
                         style: TextStyle(
@@ -99,15 +173,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Color(0xFF0D2137),
                         ),
                       ),
-
                       const SizedBox(height: 50),
 
-                      // حقل اختيار نوع الحساب (Dropdown)
                       if (selectedRole == null) ...[
                         Container(
-                          width:
-                              MediaQuery.of(context).size.width *
-                              0.8, // عرض متناسق
+                          width: MediaQuery.of(context).size.width * 0.8,
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
@@ -129,39 +199,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               border: InputBorder.none,
                             ),
-                            // استايل القائمة نفسها عند الفتح
-                            dropdownColor: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            value: selectedRole,
-                            items: ['Admin', 'Doctor', 'Patient'].map((
-                              String role,
-                            ) {
-                              return DropdownMenuItem<String>(
+                            items: ['Admin', 'Doctor', 'Patient'].map((role) {
+                              return DropdownMenuItem(
                                 value: role,
-                                alignment: AlignmentDirectional.center,
-                                child: Text(
-                                  role,
-                                  style: const TextStyle(
-                                    color: Color(0xFF0D2137),
-                                  ),
-                                ),
+                                child: Text(role),
                               );
                             }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                selectedRole = newValue;
-                                _userController.text = newValue!.toLowerCase();
-                              });
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => selectedRole = val);
+                                _saveRole(
+                                  val,
+                                ); // بنحفظ الاختيار طوالي أول ما يختار
+                              }
                             },
                           ),
                         ),
                       ],
 
-                      const SizedBox(height: 25),
-
-                      // ابدأ اكتب الـ if هنا مباشرة
                       if (selectedRole != null) ...[
-                        // 1. زر الرجوع والعنوان
                         Row(
                           children: [
                             IconButton(
@@ -169,27 +225,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Icons.arrow_back_ios_new,
                                 color: Color(0xFF147A74),
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  selectedRole =
-                                      null; // بيرجع يظهر الـ Dropdown
-                                });
-                              },
+                              onPressed: () =>
+                                  setState(() => selectedRole = null),
                             ),
                             Text(
-                              'تسجيل الدخول كـ $selectedRole',
+                              'دخول كـ $selectedRole',
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF147A74),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(
-                          height: 10,
-                        ), // مسافة بسيطة قبل حقل الإيميل
-                        // 1. حقل الإيميل
+                        const SizedBox(height: 15),
                         TextFormField(
                           controller: emailController,
                           decoration: const InputDecoration(
@@ -199,8 +248,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-
-                        // 2. حقل كلمة المرور
                         TextFormField(
                           controller: passwordController,
                           obscureText: true,
@@ -212,83 +259,58 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 30),
 
-                        // 3. زر تسجيل الدخول
-                        // 3. زر تسجيل الدخول (يظهر بعد اختيار الحساب)
                         ElevatedButton(
-                          onPressed: _navigateToDashboard,
+                          onPressed: isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(
-                              0xFF147A74,
-                            ), // نفس اللون الأخضر
-                            minimumSize: const Size(
-                              double.infinity,
-                              50,
-                            ), // عرض كامل عشان التناسق
+                            backgroundColor: const Color(0xFF147A74),
+                            minimumSize: const Size(double.infinity, 50),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                10,
-                              ), // حواف متناسقة مع الحقول
-                            ),
-                            elevation: 2, // ظل خفيف للجمالية
-                          ),
-                          child: const Text(
-                            'تسجيل الدخول',
-                            style: TextStyle(
-                              color: Colors.white, // اللون الأبيض للنص
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text("ليس لديك حساب؟"),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const SignUpScreen(),
+                          child: isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
                                   ),
-                                );
-                              },
-                              child: const Text(
-                                "سجل الآن",
-                                style: TextStyle(
-                                  color: Color(0xFF147A74),
-                                  fontWeight: FontWeight.bold,
+                                )
+                              : const Text(
+                                  'تسجيل الدخول',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
                         ),
-                      ], // نهاية الـ if
+                      ],
 
-                      if (selectedRole == null) ...[
-                        SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.8,
-                          child: ElevatedButton(
-                            onPressed: () {}, // خليه فاضي حالياً
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF147A74),
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("ليس لديك حساب؟"),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SignUpScreen(),
+                                ),
+                              );
+                            },
                             child: const Text(
-                              "دخول",
+                              "سجل الآن",
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
+                                color: Color(0xFF147A74),
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                        ),
-                      ], // ده الشرط بتاع اظهار الزر الاخضر الكبير فقط لما تكون لسة ما اخترت حاجة
-                      // زر الدخول
+                        ],
+                      ),
                     ],
                   ),
                 ),
