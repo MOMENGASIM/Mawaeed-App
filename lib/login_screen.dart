@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// استيراد الشاشات - تأكد أن أسماء الملفات صحيحة في مشروعك
 import 'admin_dashboard.dart';
 import 'doctor_dashboard.dart';
 import 'patient_dashboard.dart';
-import 'sign_up_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'sign_up_screen.dart'; // تأكد من وجود هذا الملف
+import 'localization.dart';
+import 'main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,25 +19,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  String? selectedRole;
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   bool isLoading = false;
-  // --- إضافة كود الذاكرة هنا ---
+
   @override
   void initState() {
     super.initState();
-    _checkSavedRole();
-  }
-
-  Future<void> _checkSavedRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? role = prefs.getString('my_role');
-    if (role != null) {
-      setState(() {
-        selectedRole = role;
-      });
-    }
   }
 
   Future<void> _saveRole(String role) async {
@@ -40,20 +33,10 @@ class _LoginScreenState extends State<LoginScreen> {
     await prefs.setString('my_role', role);
   }
 
-  // الوظيفة الأساسية لتسجيل الدخول والتحقق
   Future<void> _handleLogin() async {
-    // 1. التحقق من المدخلات
     if (emailController.text.isEmpty || passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("الرجاء إدخال الإيميل وكلمة المرور")),
-      );
-      return;
-    }
-
-    // 2. التحقق من اختيار النوع (Role)
-    if (selectedRole == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("الرجاء اختيار نوع الحساب أولاً")),
+        SnackBar(content: Text(tr("الرجاء إدخال الإيميل وكلمة المرور"))),
       );
       return;
     }
@@ -61,7 +44,6 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = true);
 
     try {
-      // 3. محاولة تسجيل الدخول عبر Firebase
       final userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(
             email: emailController.text.trim(),
@@ -69,13 +51,34 @@ class _LoginScreenState extends State<LoginScreen> {
           );
 
       if (userCredential.user != null) {
+        String uid = userCredential.user!.uid;
+        String role = "Patient"; // default
+
+        try {
+          var userDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
+          if (userDoc.exists && userDoc.data()!.containsKey('role')) {
+            role = userDoc.data()!['role'];
+          } else {
+            // Fallback for existing accounts
+            var docDoc = await FirebaseFirestore.instance.collection('Doctors').doc(uid).get();
+            if (docDoc.exists) {
+              role = "Doctor";
+            } else if (emailController.text.trim().toLowerCase() == 'admin@admin.com') {
+              role = "Admin";
+            }
+          }
+        } catch (e) {
+          debugPrint("Error fetching role: $e");
+        }
+
+        await _saveRole(role);
+
         if (!mounted) return;
 
-        // 4. التوجيه بناءً على الـ Role
         Widget nextScreen;
-        if (selectedRole == "Admin") {
+        if (role == "Admin") {
           nextScreen = const AdminDashboard();
-        } else if (selectedRole == "Doctor") {
+        } else if (role == "Doctor") {
           nextScreen = const DoctorDashboard();
         } else {
           nextScreen = const PatientDashboard();
@@ -87,36 +90,24 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      // هنا "الجاسوس" حيطبع ليك السبب الحقيقي في الـ Console تحت
-      print("🚨 خطأ من فايربيز (الكود): ${e.code}");
-      print("🚨 رسالة الخطأ: ${e.message}");
+      debugPrint("🚨 Firebase Error: ${e.code}");
 
       if (!mounted) return;
 
-      // رسائل تنبيهية للمستخدم حسب نوع الخطأ
-      String errorMessage = "حدث خطأ أثناء تسجيل الدخول";
-
+      String errorMessage = tr("حدث خطأ أثناء تسجيل الدخول");
       if (e.code == 'user-not-found') {
-        errorMessage = "هذا الحساب غير موجود";
+        errorMessage = tr("هذا الحساب غير موجود");
       } else if (e.code == 'wrong-password') {
-        errorMessage = "كلمة المرور غير صحيحة";
-      } else if (e.code == 'network-request-failed') {
-        errorMessage = "تأكد من اتصالك بالإنترنت";
-      } else if (e.code == 'too-many-requests') {
-        errorMessage = "محاولات كثيرة خاطئة، جرب لاحقاً";
+        errorMessage = tr("كلمة المرور غير صحيحة");
+      } else if (e.code == 'invalid-email') {
+        errorMessage = tr("صيغة الإيميل غير صحيحة");
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
-    } catch (e) {
-      // لأي أخطاء برمجية أخرى
-      print("🚨 خطأ عام: $e");
     } finally {
-      // الخطوة دي هي اللي بتضمن إن اللفة تقيف سواء نجح أو فشل
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -129,196 +120,121 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFF),
-      body: SizedBox(
-        width: double.infinity,
-        height: double.infinity,
-        child: Stack(
+    return ValueListenableBuilder<bool>(
+      valueListenable: languageNotifier,
+      builder: (context, isEnglish, child) {
+        return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Stack(
           children: [
             Positioned(
               top: -50,
-              right: -50,
+              right: isEnglish ? null : -50,
+              left: isEnglish ? -50 : null,
               child: CircleAvatar(
                 radius: 100,
-                backgroundColor: const Color(0xFF147A74).withOpacity(0.05),
+                backgroundColor: const Color(0xFF147A74).withAlpha(13),
               ),
             ),
-            Center(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.health_and_safety_rounded,
-                          size: 80,
-                          color: Color(0xFF147A74),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      const Text(
-                        "تسجيل الدخول",
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D2137),
-                        ),
-                      ),
-                      const SizedBox(height: 50),
-
-                      if (selectedRole == null) ...[
-                        Container(
-                          width: MediaQuery.of(context).size.width * 0.8,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: DropdownButtonFormField<String>(
-                            alignment: AlignmentDirectional.center,
-                            decoration: const InputDecoration(
-                              hintText: 'اختر نوع الحساب',
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 18,
-                              ),
-                              border: InputBorder.none,
-                            ),
-                            items: ['Admin', 'Doctor', 'Patient'].map((role) {
-                              return DropdownMenuItem(
-                                value: role,
-                                child: Text(role),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() => selectedRole = val);
-                                _saveRole(
-                                  val,
-                                ); // بنحفظ الاختيار طوالي أول ما يختار
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-
-                      if (selectedRole != null) ...[
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.arrow_back_ios_new,
-                                color: Color(0xFF147A74),
-                              ),
-                              onPressed: () =>
-                                  setState(() => selectedRole = null),
-                            ),
-                            Text(
-                              'دخول كـ $selectedRole',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF147A74),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 15),
-                        TextFormField(
-                          controller: emailController,
-                          decoration: const InputDecoration(
-                            labelText: 'الإيميل',
-                            prefixIcon: Icon(Icons.email),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextFormField(
-                          controller: passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'كلمة المرور',
-                            prefixIcon: Icon(Icons.lock),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-
-                        ElevatedButton(
-                          onPressed: isLoading ? null : _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF147A74),
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  'تسجيل الدخول',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("ليس لديك حساب؟"),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SignUpScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              "سجل الآن",
-                              style: TextStyle(
-                                color: Color(0xFF147A74),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+            Positioned(
+              top: 50,
+              right: 20,
+              child: TextButton.icon(
+                onPressed: () async {
+                  languageNotifier.value = !languageNotifier.value;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('isEnglish', languageNotifier.value);
+                },
+                icon: const Icon(Icons.language, color: Color(0xFF147A74)),
+                label: Text(
+                  tr("عربي"),
+                  style: const TextStyle(color: Color(0xFF147A74), fontWeight: FontWeight.bold),
                 ),
               ),
             ),
-          ],
+            Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 30.0),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.health_and_safety_rounded,
+                    size: 80,
+                    color: Color(0xFF147A74),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    tr("تسجيل الدخول"),
+                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 40),
+
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: emailController,
+                    decoration: InputDecoration(
+                      labelText: tr('الإيميل'),
+                      prefixIcon: const Icon(Icons.email),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: tr('كلمة المرور'),
+                      prefixIcon: const Icon(Icons.lock),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF147A74),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            tr('تسجيل الدخول'),
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                  ),
+
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(tr("ليس لديك حساب؟")),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SignUpScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          tr("سجل الآن"),
+                          style: const TextStyle(
+                            color: Color(0xFF147A74),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         ),
-      ),
+      );
+      },
     );
   }
 }

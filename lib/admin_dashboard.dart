@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'login_screen.dart';
+import 'main.dart';
+import 'localization.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -14,14 +20,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      drawer: _buildSideBar(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "لوحة الإدارة",
+          tr("لوحة الإدارة"),
           style: GoogleFonts.elMessiri(
-            color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -32,8 +36,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. ملخص سريع بالأرقام الكبيرة
-            _buildHeader("إحصائيات النظام"),
+            _buildHeader(tr("إحصائيات النظام")),
             const SizedBox(height: 15),
             GridView.count(
               shrinkWrap: true,
@@ -44,25 +47,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
               childAspectRatio: 1.5,
               children: [
                 _buildSummaryCard(
-                  "إجمالي المرضى",
+                  tr("إجمالي المرضى"),
                   "1,240",
                   Icons.person_add,
                   Colors.blue,
                 ),
                 _buildSummaryCard(
-                  "الأطباء",
+                  tr("الأطباء"),
                   "85",
                   Icons.medical_services,
                   Colors.orange,
                 ),
                 _buildSummaryCard(
-                  "حجوزات اليوم",
+                  tr("حجوزات اليوم"),
                   "42",
                   Icons.book_online,
                   adminColor,
                 ),
                 _buildSummaryCard(
-                  "شكاوى معلقة",
+                  tr("شكاوى معلقة"),
                   "3",
                   Icons.report_problem,
                   Colors.red,
@@ -73,22 +76,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
             const SizedBox(height: 30),
 
             // 2. إدارة الأطباء (طلبات الانضمام)
-            _buildHeader("طلبات انضمام أطباء جدد"),
+            _buildHeader(tr("طلبات انضمام أطباء جدد")),
             const SizedBox(height: 12),
             _buildRequestTile(
-              "د. خالد عيسى",
-              "جراحة عامة",
-              "شهادة تخصص + ترخيص",
+              tr("د. خالد عيسى"),
+              tr("جراحة عامة"),
+              tr("شهادة تخصص + ترخيص"),
             ),
-            _buildRequestTile("د. منى علي", "طب أطفال", "شهادة جامعية"),
+            _buildRequestTile(tr("د. منى علي"), tr("طب أطفال"), tr("شهادة جامعية")),
 
             const SizedBox(height: 30),
 
             // 3. أزرار التحكم السريع
-            _buildHeader("إجراءات سريعة"),
+            _buildHeader(tr("إجراءات سريعة")),
             const SizedBox(height: 12),
-            _buildAdminAction(Icons.add_moderator, "إضافة مدير للنظام"),
-            _buildAdminAction(Icons.analytics, "تصدير تقارير الأداء"),
+            _buildAdminAction(Icons.add_moderator, tr("إضافة مدير للنظام")),
+            _buildAdminAction(Icons.analytics, tr("تصدير تقارير الأداء")),
           ],
         ),
       ),
@@ -111,9 +114,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withAlpha(13),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: color.withOpacity(0.1)),
+        border: Border.all(color: color.withAlpha(26)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -163,12 +166,219 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        tileColor: Colors.grey[50],
+        tileColor: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         leading: Icon(icon, color: adminColor),
         title: Text(label),
         trailing: const Icon(Icons.arrow_forward_ios, size: 14),
         onTap: () {},
+      ),
+    );
+  }
+
+  // الـ Sidebar (Drawer)
+  Widget _buildSideBar(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: BoxDecoration(color: adminColor),
+            accountName: Text(
+              FirebaseAuth.instance.currentUser?.displayName ?? tr("مسؤول"),
+            ),
+            accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
+            currentAccountPicture: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: Text(tr("تغيير الاسم")),
+            onTap: () {
+              Navigator.pop(context);
+              _showChangeNameDialog();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.email),
+            title: Text(tr("تغيير الإيميل")),
+            onTap: () {
+              Navigator.pop(context);
+              _showChangeEmailDialog();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock),
+            title: Text(tr("تغيير كلمة المرور")),
+            onTap: () {
+              Navigator.pop(context);
+              _showChangePasswordDialog();
+            },
+          ),
+          const Divider(),
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: themeNotifier,
+            builder: (context, currentMode, child) {
+              return SwitchListTile(
+                secondary: const Icon(Icons.dark_mode),
+                title: Text(tr("الوضع الليلي")),
+                value: currentMode == ThemeMode.dark,
+                onChanged: (value) async {
+                  themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('isDark', value);
+                },
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: Text(tr("تسجيل الخروج"), style: const TextStyle(color: Colors.red)),
+            onTap: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangeNameDialog() {
+    final nameController = TextEditingController(text: FirebaseAuth.instance.currentUser?.displayName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr("تغيير الاسم")),
+        content: TextField(
+          controller: nameController,
+          decoration: InputDecoration(labelText: tr("الاسم الجديد")),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(tr("إلغاء")),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: adminColor),
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.currentUser?.updateDisplayName(nameController.text.trim());
+                final uid = FirebaseAuth.instance.currentUser?.uid;
+                if (uid != null) {
+                  try {
+                    await FirebaseFirestore.instance.collection('Users').doc(uid).update({'name': nameController.text.trim()});
+                  } catch (_) {}
+                }
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("تم تغيير الاسم بنجاح"))),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("حدث خطأ: ") + e.toString()), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangeEmailDialog() {
+    final emailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr("تغيير الإيميل")),
+        content: TextField(
+          controller: emailController,
+          decoration: InputDecoration(labelText: tr("الإيميل الجديد")),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(tr("إلغاء")),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: adminColor),
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.currentUser?.verifyBeforeUpdateEmail(emailController.text.trim());
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه."))),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("حدث خطأ: ") + e.toString()), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr("تغيير كلمة المرور")),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(labelText: tr("كلمة المرور الجديدة")),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(tr("إلغاء")),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: adminColor),
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.currentUser?.updatePassword(passwordController.text.trim());
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("تم تغيير كلمة المرور بنجاح"))),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى.")), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

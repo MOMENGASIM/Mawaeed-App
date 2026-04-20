@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'login_screen.dart';
+import 'main.dart';
+import 'localization.dart';
 
 class DoctorDashboard extends StatefulWidget {
   const DoctorDashboard({super.key});
@@ -11,94 +17,179 @@ class DoctorDashboard extends StatefulWidget {
 class _DoctorDashboardState extends State<DoctorDashboard> {
   final Color primaryGreen = const Color(0xFF0F766E);
 
-  // دالة لتغيير حالة الموعد (قبول/رفض)
-  void _updateAppointmentStatus(String patientName, String status) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("تم $status موعد المريض: $patientName"),
-        backgroundColor: status == "قبول" ? primaryGreen : Colors.red,
-      ),
-    );
+  // 1. دالة تحديث الحالة (قبول/رفض) مع الفايربيز
+  Future<void> _updateStatus(
+    String docId,
+    String patientName,
+    String status,
+  ) async {
+    try {
+      String? appointmentTime;
+      String? appointmentDate;
+      Timestamp? appointmentTimestamp;
+
+      if (status == "قبول") {
+        DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime.now(),
+          lastDate: DateTime.now().add(const Duration(days: 365)),
+        );
+        if (pickedDate == null) return;
+
+        if (!mounted) return;
+        TimeOfDay? pickedTime = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.now(),
+        );
+        if (pickedTime == null) return;
+        
+        if (!mounted) return;
+        appointmentTime = pickedTime.format(context);
+        appointmentDate = "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
+        
+        DateTime fullDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+        appointmentTimestamp = Timestamp.fromDate(fullDateTime);
+      }
+
+      Map<String, dynamic> updateData = {
+        'status': status == "قبول" ? 'confirmed' : 'rejected',
+      };
+      if (appointmentTime != null) {
+        updateData['appointmentTime'] = appointmentTime;
+        updateData['appointmentDate'] = appointmentDate;
+        updateData['appointmentTimestamp'] = appointmentTimestamp;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('Appointments')
+          .doc(docId)
+          .update(updateData);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr("تم ") + tr(status) + tr(" موعد: ") + patientName),
+            backgroundColor: status == "قبول" ? primaryGreen : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("خطأ في التحديث: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      drawer: _buildSideBar(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "لوحة تحكم الطبيب",
+          tr("لوحة تحكم الطبيب"),
           style: GoogleFonts.elMessiri(
-            color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           CircleAvatar(
-            backgroundColor: primaryGreen.withOpacity(0.1),
+            backgroundColor: primaryGreen.withAlpha(26),
             child: Icon(Icons.person, color: primaryGreen),
           ),
           const SizedBox(width: 20),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. ترحيب وإحصائيات سريعة
-            Text(
-              "مرحباً د. أحمد",
-              style: GoogleFonts.elMessiri(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: primaryGreen,
-              ),
-            ),
-            const Text(
-              "لديك 5 مواعيد جديدة اليوم",
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 25),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('Appointments')
+            .where('doctorId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+            .where('status', isEqualTo: 'pending')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            // 2. كروت الإحصائيات (ملخص سريع)
-            Row(
+          int count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildStatCard("إجمالي الحجوزات", "128", Icons.calendar_month),
-                const SizedBox(width: 15),
-                _buildStatCard("مرضى اليوم", "5", Icons.people),
+                Text(
+                  tr("مرحباً د. ") + (FirebaseAuth.instance.currentUser?.displayName ?? tr("طبيب")),
+                  style: GoogleFonts.elMessiri(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: primaryGreen,
+                  ),
+                ),
+                Text(
+                  tr("لديك ") + count.toString() + tr(" مواعيد جديدة اليوم"),
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 25),
+
+                Row(
+                  children: [
+                    _buildStatCard(
+                      tr("إجمالي الحجوزات"),
+                      "128",
+                      Icons.calendar_month,
+                    ),
+                    const SizedBox(width: 15),
+                    _buildStatCard(tr("مرضى اليوم"), "$count", Icons.people),
+                  ],
+                ),
+                const SizedBox(height: 30),
+
+                Text(
+                  tr("طلبات الحجز المعلقة"),
+                  style: GoogleFonts.elMessiri(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 15),
+
+                if (count == 0)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: Text(tr("لا توجد طلبات معلقة حالياً")),
+                    ),
+                  )
+                else
+                  ...snapshot.data!.docs.map((doc) {
+                    var data = doc.data() as Map<String, dynamic>;
+                    return _buildRequestItem(
+                      doc.id,
+                      data['patientName'] ?? tr("مريض"),
+                      data['date'] ?? tr("اليوم"),
+                      data['reason'] ?? tr("فحص"),
+                    );
+                  }),
               ],
             ),
-            const SizedBox(height: 30),
-
-            // 3. قائمة طلبات الحجز القادمة
-            Text(
-              "طلبات الحجز المعلقة",
-              style: GoogleFonts.elMessiri(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 15),
-
-            _buildAppointmentRequest("مؤمن أبو القاسم", "10:30 ص", "فحص دوري"),
-            _buildAppointmentRequest("عمر خالد", "11:15 ص", "متابعة عملية"),
-            _buildAppointmentRequest("سارة يوسف", "12:00 م", "استشارة فورية"),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  // ويلجيت الإحصائيات الصغيرة
   Widget _buildStatCard(String title, String value, IconData icon) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.grey[50],
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: Colors.grey.shade200),
         ),
@@ -121,9 +212,9 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     );
   }
 
-  // ويلجيت طلب الموعد (مع زراير قبول ورفض)
-  Widget _buildAppointmentRequest(
-    String patientName,
+  Widget _buildRequestItem(
+    String docId,
+    String name,
     String time,
     String reason,
   ) {
@@ -131,11 +222,11 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
+          BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 10),
         ],
       ),
       child: Column(
@@ -143,7 +234,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           Row(
             children: [
               CircleAvatar(
-                backgroundColor: primaryGreen.withOpacity(0.1),
+                backgroundColor: primaryGreen.withAlpha(26),
                 child: const Icon(Icons.person_outline),
               ),
               const SizedBox(width: 15),
@@ -152,7 +243,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      patientName,
+                      name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
@@ -169,34 +260,243 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => _updateAppointmentStatus(patientName, "رفض"),
+                  onPressed: () => _updateStatus(docId, name, "رفض"),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.red),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text("رفض", style: TextStyle(color: Colors.red)),
+                  child: Text(tr("رفض"), style: const TextStyle(color: Colors.red)),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () =>
-                      _updateAppointmentStatus(patientName, "قبول"),
+                  onPressed: () => _updateStatus(docId, name, "قبول"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    "قبول",
-                    style: TextStyle(color: Colors.white),
+                  child: Text(
+                    tr("قبول"),
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // الـ Sidebar (Drawer)
+  Widget _buildSideBar(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: BoxDecoration(color: primaryGreen),
+            accountName: Text(
+              FirebaseAuth.instance.currentUser?.displayName ?? tr("طبيب"),
+            ),
+            accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
+            currentAccountPicture: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: Text(tr("تغيير الاسم")),
+            onTap: () {
+              Navigator.pop(context);
+              _showChangeNameDialog();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.email),
+            title: Text(tr("تغيير الإيميل")),
+            onTap: () {
+              Navigator.pop(context);
+              _showChangeEmailDialog();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock),
+            title: Text(tr("تغيير كلمة المرور")),
+            onTap: () {
+              Navigator.pop(context);
+              _showChangePasswordDialog();
+            },
+          ),
+          const Divider(),
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: themeNotifier,
+            builder: (context, currentMode, child) {
+              return SwitchListTile(
+                secondary: const Icon(Icons.dark_mode),
+                title: Text(tr("الوضع الليلي")),
+                value: currentMode == ThemeMode.dark,
+                onChanged: (value) async {
+                  themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('isDark', value);
+                },
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: Text(tr("تسجيل الخروج"), style: const TextStyle(color: Colors.red)),
+            onTap: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangeNameDialog() {
+    final nameController = TextEditingController(text: FirebaseAuth.instance.currentUser?.displayName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr("تغيير الاسم")),
+        content: TextField(
+          controller: nameController,
+          decoration: InputDecoration(labelText: tr("الاسم الجديد")),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(tr("إلغاء")),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.currentUser?.updateDisplayName(nameController.text.trim());
+                final uid = FirebaseAuth.instance.currentUser?.uid;
+                if (uid != null) {
+                  try {
+                    await FirebaseFirestore.instance.collection('Users').doc(uid).update({'name': nameController.text.trim()});
+                  } catch (_) {}
+                  try {
+                    await FirebaseFirestore.instance.collection('Doctors').doc(uid).update({'name': nameController.text.trim()});
+                  } catch (_) {}
+                }
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("تم تغيير الاسم بنجاح"))),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("حدث خطأ: ") + e.toString()), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangeEmailDialog() {
+    final emailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr("تغيير الإيميل")),
+        content: TextField(
+          controller: emailController,
+          decoration: InputDecoration(labelText: tr("الإيميل الجديد")),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(tr("إلغاء")),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.currentUser?.verifyBeforeUpdateEmail(emailController.text.trim());
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه."))),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("حدث خطأ: ") + e.toString()), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr("تغيير كلمة المرور")),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(labelText: tr("كلمة المرور الجديدة")),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(tr("إلغاء")),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.currentUser?.updatePassword(passwordController.text.trim());
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("تم تغيير كلمة المرور بنجاح"))),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى.")), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
