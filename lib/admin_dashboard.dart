@@ -25,75 +25,164 @@ class _AdminDashboardState extends State<AdminDashboard> {
         elevation: 0,
         title: Text(
           tr("لوحة الإدارة"),
-          style: GoogleFonts.elMessiri(
-            fontWeight: FontWeight.bold,
-          ),
+          style: GoogleFonts.elMessiri(fontWeight: FontWeight.bold),
         ),
         leading: Icon(Icons.admin_panel_settings, color: adminColor),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(tr("إحصائيات النظام")),
-            const SizedBox(height: 15),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.5,
-              children: [
-                _buildSummaryCard(
-                  tr("إجمالي المرضى"),
-                  "1,240",
-                  Icons.person_add,
-                  Colors.blue,
-                ),
-                _buildSummaryCard(
-                  tr("الأطباء"),
-                  "85",
-                  Icons.medical_services,
-                  Colors.orange,
-                ),
-                _buildSummaryCard(
-                  tr("حجوزات اليوم"),
-                  "42",
-                  Icons.book_online,
-                  adminColor,
-                ),
-                _buildSummaryCard(
-                  tr("شكاوى معلقة"),
-                  "3",
-                  Icons.report_problem,
-                  Colors.red,
-                ),
-              ],
-            ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('Complaints')
+            .where('isRead', isEqualTo: false)
+            .snapshots(),
+        builder: (context, complaintsSnapshot) {
+          int pendingComplaints = complaintsSnapshot.hasData
+              ? complaintsSnapshot.data!.docs.length
+              : 0;
+          return StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('Doctors')
+                .where('isApproved', isEqualTo: false)
+                .snapshots(),
+            builder: (context, doctorsSnapshot) {
+              var pendingDoctors = doctorsSnapshot.hasData
+                  ? doctorsSnapshot.data!.docs
+                  : [];
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(tr("إحصائيات النظام")),
+                    const SizedBox(height: 15),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.5,
+                      children: [
+                        _buildSummaryCard(
+                          tr("إجمالي المرضى"),
+                          "-",
+                          Icons.person_add,
+                          Colors.blue,
+                        ),
+                        _buildSummaryCard(
+                          tr("الأطباء"),
+                          "-",
+                          Icons.medical_services,
+                          Colors.orange,
+                        ),
+                        _buildSummaryCard(
+                          tr("حجوزات اليوم"),
+                          "-",
+                          Icons.book_online,
+                          adminColor,
+                        ),
+                        _buildSummaryCard(
+                          tr("شكاوى معلقة"),
+                          "$pendingComplaints",
+                          Icons.report_problem,
+                          Colors.red,
+                        ),
+                      ],
+                    ),
 
-            const SizedBox(height: 30),
+                    const SizedBox(height: 30),
 
-            // 2. إدارة الأطباء (طلبات الانضمام)
-            _buildHeader(tr("طلبات انضمام أطباء جدد")),
-            const SizedBox(height: 12),
-            _buildRequestTile(
-              tr("د. خالد عيسى"),
-              tr("جراحة عامة"),
-              tr("شهادة تخصص + ترخيص"),
-            ),
-            _buildRequestTile(tr("د. منى علي"), tr("طب أطفال"), tr("شهادة جامعية")),
+                    // 2. إدارة الأطباء (طلبات الانضمام)
+                    _buildHeader(tr("طلبات انضمام أطباء جدد")),
+                    const SizedBox(height: 12),
+                    if (pendingDoctors.isEmpty)
+                      const Text(
+                        "لا توجد طلبات معلقة حالياً",
+                        style: TextStyle(color: Colors.grey),
+                      )
+                    else
+                      ...pendingDoctors.map((doc) {
+                        Map<String, dynamic> data =
+                            doc.data() as Map<String, dynamic>;
+                        return _buildRequestTile(
+                          doc.id,
+                          data['name'] ?? tr("طبيب بدون اسم"),
+                          data['specialty'] ?? tr("تخصص عام"),
+                          data['cv'] ?? tr("لا توجد سيرة ذاتية"),
+                        );
+                      }),
 
-            const SizedBox(height: 30),
+                    const SizedBox(height: 30),
 
-            // 3. أزرار التحكم السريع
-            _buildHeader(tr("إجراءات سريعة")),
-            const SizedBox(height: 12),
-            _buildAdminAction(Icons.add_moderator, tr("إضافة مدير للنظام")),
-            _buildAdminAction(Icons.analytics, tr("تصدير تقارير الأداء")),
-          ],
-        ),
+                    // 3. الشكاوى والمقترحات
+                    _buildHeader("الشكاوى والمقترحات"),
+                    const SizedBox(height: 12),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('Complaints')
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                      builder: (context, allComplaintsSnap) {
+                        if (!allComplaintsSnap.hasData)
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        var complaints = allComplaintsSnap.data!.docs;
+                        if (complaints.isEmpty)
+                          return const Text(
+                            "لا توجد شكاوى حالياً",
+                            style: TextStyle(color: Colors.grey),
+                          );
+                        return Column(
+                          children: complaints.map((doc) {
+                            Map<String, dynamic> data =
+                                doc.data() as Map<String, dynamic>;
+                            return Card(
+                              color: data['isRead'] == true
+                                  ? Theme.of(context).cardColor
+                                  : Colors.red.withAlpha(13),
+                              child: ListTile(
+                                title: Text(data['patientName'] ?? "مريض"),
+                                subtitle: Text(data['complaintText'] ?? ""),
+                                trailing: IconButton(
+                                  icon: Icon(
+                                    Icons.check_circle,
+                                    color: data['isRead'] == true
+                                        ? Colors.grey
+                                        : Colors.green,
+                                  ),
+                                  onPressed: () {
+                                    FirebaseFirestore.instance
+                                        .collection('Complaints')
+                                        .doc(doc.id)
+                                        .update({'isRead': true});
+                                  },
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // 4. أزرار التحكم السريع
+                    _buildHeader(tr("إجراءات سريعة")),
+                    const SizedBox(height: 12),
+                    _buildAdminAction(
+                      Icons.add_moderator,
+                      tr("إضافة مدير للنظام"),
+                    ),
+                    _buildAdminAction(
+                      Icons.analytics,
+                      tr("تصدير تقارير الأداء"),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -134,7 +223,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   // طلب انضمام طبيب
-  Widget _buildRequestTile(String name, String spec, String docs) {
+  Widget _buildRequestTile(
+    String docId,
+    String name,
+    String spec,
+    String docs,
+  ) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -149,11 +243,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             IconButton(
               icon: const Icon(Icons.check_circle, color: Colors.green),
-              onPressed: () {},
+              onPressed: () {
+                FirebaseFirestore.instance
+                    .collection('Doctors')
+                    .doc(docId)
+                    .update({'isApproved': true});
+              },
             ),
             IconButton(
               icon: const Icon(Icons.cancel, color: Colors.red),
-              onPressed: () {},
+              onPressed: () {
+                FirebaseFirestore.instance
+                    .collection('Doctors')
+                    .doc(docId)
+                    .update({'isApproved': 'rejected'});
+              },
             ),
           ],
         ),
@@ -226,7 +330,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 title: Text(tr("الوضع الليلي")),
                 value: currentMode == ThemeMode.dark,
                 onChanged: (value) async {
-                  themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+                  themeNotifier.value = value
+                      ? ThemeMode.dark
+                      : ThemeMode.light;
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('isDark', value);
                 },
@@ -236,7 +342,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: Text(tr("تسجيل الخروج"), style: const TextStyle(color: Colors.red)),
+            title: Text(
+              tr("تسجيل الخروج"),
+              style: const TextStyle(color: Colors.red),
+            ),
             onTap: () async {
               await FirebaseAuth.instance.signOut();
               if (context.mounted) {
@@ -253,7 +362,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void _showChangeNameDialog() {
-    final nameController = TextEditingController(text: FirebaseAuth.instance.currentUser?.displayName);
+    final nameController = TextEditingController(
+      text: FirebaseAuth.instance.currentUser?.displayName,
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -271,11 +382,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
             style: ElevatedButton.styleFrom(backgroundColor: adminColor),
             onPressed: () async {
               try {
-                await FirebaseAuth.instance.currentUser?.updateDisplayName(nameController.text.trim());
+                await FirebaseAuth.instance.currentUser?.updateDisplayName(
+                  nameController.text.trim(),
+                );
                 final uid = FirebaseAuth.instance.currentUser?.uid;
                 if (uid != null) {
                   try {
-                    await FirebaseFirestore.instance.collection('Users').doc(uid).update({'name': nameController.text.trim()});
+                    await FirebaseFirestore.instance
+                        .collection('Users')
+                        .doc(uid)
+                        .update({'name': nameController.text.trim()});
                   } catch (_) {}
                 }
                 if (context.mounted) {
@@ -288,12 +404,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr("حدث خطأ: ") + e.toString()), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text(tr("حدث خطأ: ") + e.toString()),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               }
             },
-            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -319,22 +441,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
             style: ElevatedButton.styleFrom(backgroundColor: adminColor),
             onPressed: () async {
               try {
-                await FirebaseAuth.instance.currentUser?.verifyBeforeUpdateEmail(emailController.text.trim());
+                await FirebaseAuth.instance.currentUser
+                    ?.verifyBeforeUpdateEmail(emailController.text.trim());
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr("تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه."))),
+                    SnackBar(
+                      content: Text(
+                        tr(
+                          "تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه.",
+                        ),
+                      ),
+                    ),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr("حدث خطأ: ") + e.toString()), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text(tr("حدث خطأ: ") + e.toString()),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               }
             },
-            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -361,7 +496,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
             style: ElevatedButton.styleFrom(backgroundColor: adminColor),
             onPressed: () async {
               try {
-                await FirebaseAuth.instance.currentUser?.updatePassword(passwordController.text.trim());
+                await FirebaseAuth.instance.currentUser?.updatePassword(
+                  passwordController.text.trim(),
+                );
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -371,12 +508,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr("حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى.")), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text(
+                        tr("حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى."),
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               }
             },
-            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),

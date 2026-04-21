@@ -167,10 +167,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 30.0),
                   child: Column(
                     children: [
-                      const Icon(
-                        Icons.health_and_safety_rounded,
-                        size: 80,
-                        color: Color(0xFF147A74),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/app_icon.jpeg',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                       const SizedBox(height: 20),
                       Text(

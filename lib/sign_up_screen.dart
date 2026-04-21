@@ -25,6 +25,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final confirmPasswordController = TextEditingController();
   final phoneController = TextEditingController();
   final specialtyController = TextEditingController();
+  final cvController = TextEditingController();
   bool isLoading = false;
 
   @override
@@ -35,6 +36,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     confirmPasswordController.dispose();
     phoneController.dispose();
     specialtyController.dispose();
+    cvController.dispose();
     super.dispose();
   }
 
@@ -101,11 +103,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 'email': emailController.text.trim(),
                 'phone': phoneController.text.trim(),
                 'specialty': specialtyController.text.trim(),
+                'cv': cvController.text.trim(),
                 'rating': 0.0,
+                'isApproved': false,
               });
         }
 
         if (!mounted) return;
+
+        if (roleEn == "Doctor") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                tr(
+                  "تم إنشاء الحساب بنجاح. ملفك الآن قيد المراجعة من قبل الإدارة.",
+                ),
+              ),
+              backgroundColor: primaryGreen,
+            ),
+          );
+        }
 
         Widget nextScreen = roleEn == "Doctor"
             ? const DoctorDashboard()
@@ -143,7 +160,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // شعار بسيط أو نص ترحيبي
-              Icon(Icons.health_and_safety, size: 80, color: primaryGreen),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  'assets/app_icon.jpeg',
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                ),
+              ),
               const SizedBox(height: 10),
               Text(
                 tr("إنشاء حساب جديد"),
@@ -205,12 +230,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   Icons.email_outlined,
                   controller: emailController,
                 ),
-                if (selectedRole == "طبيب")
+                if (selectedRole == "طبيب") ...[
                   _buildTextField(
                     tr("التخصص الطبي (مثال: طبيب عيون)"),
                     Icons.medical_information_outlined,
                     controller: specialtyController,
                   ),
+                  _buildTextField(
+                    tr("السيرة الذاتية أو الخبرات"),
+                    Icons.description_outlined,
+                    controller: cvController,
+                    maxLines: 3,
+                  ),
+                ],
                 _buildTextField(
                   tr("رقم الهاتف"),
                   Icons.phone_outlined,
@@ -294,6 +326,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     IconData icon, {
     bool isPass = false,
     bool isNumber = false,
+    int maxLines = 1,
     TextEditingController? controller,
   }) {
     return Padding(
@@ -301,6 +334,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       child: TextField(
         controller: controller,
         obscureText: isPass,
+        maxLines: isPass ? 1 : maxLines,
         keyboardType: isNumber ? TextInputType.phone : TextInputType.text,
         decoration: InputDecoration(
           hintText: hint,

@@ -54,7 +54,7 @@ class TeleAppointmentApp extends StatelessWidget {
                 textTheme: GoogleFonts.cairoTextTheme(
                   darkBaseTheme.textTheme,
                 ).apply(bodyColor: Colors.white, displayColor: Colors.white),
-                scaffoldBackgroundColor: const Color(0xFF0F172A),
+                scaffoldBackgroundColor: const Color(0xFF1E1E1E),
               ),
               theme: baseTheme.copyWith(
                 colorScheme: baseTheme.colorScheme.copyWith(

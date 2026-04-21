@@ -43,11 +43,12 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           initialTime: TimeOfDay.now(),
         );
         if (pickedTime == null) return;
-        
+
         if (!mounted) return;
         appointmentTime = pickedTime.format(context);
-        appointmentDate = "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
-        
+        appointmentDate =
+            "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
+
         DateTime fullDateTime = DateTime(
           pickedDate.year,
           pickedDate.month,
@@ -72,6 +73,21 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           .doc(docId)
           .update(updateData);
 
+      if (status == "قبول") {
+        String uid = FirebaseAuth.instance.currentUser!.uid;
+        var docRef = FirebaseFirestore.instance.collection('Doctors').doc(uid);
+        var docSnap = await docRef.get();
+        if (docSnap.exists) {
+          double currentRating = (docSnap.data()?['rating'] ?? docSnap.data()?['Rating'] ?? 0.0).toDouble();
+          double newRating = currentRating + 0.1;
+          if (newRating > 5.0) newRating = 5.0;
+          await docRef.update({
+            'rating': double.parse(newRating.toStringAsFixed(1)),
+            'Rating': double.parse(newRating.toStringAsFixed(1))
+          });
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -93,9 +109,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         elevation: 0,
         title: Text(
           tr("لوحة تحكم الطبيب"),
-          style: GoogleFonts.elMessiri(
-            fontWeight: FontWeight.bold,
-          ),
+          style: GoogleFonts.elMessiri(fontWeight: FontWeight.bold),
         ),
         actions: [
           CircleAvatar(
@@ -108,31 +122,82 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('Appointments')
-            .where('doctorId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-            .where('status', isEqualTo: 'pending')
+            .where(
+              'doctorId',
+              isEqualTo: FirebaseAuth.instance.currentUser?.uid,
+            )
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          int count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+          var allDocs = snapshot.hasData ? snapshot.data!.docs : [];
+          var pendingDocs = allDocs.where((doc) {
+            var data = doc.data() as Map<String, dynamic>;
+            return data['status'] == 'pending';
+          }).toList();
+          var confirmedDocs = allDocs.where((doc) {
+            var data = doc.data() as Map<String, dynamic>;
+            return data['status'] == 'confirmed';
+          }).toList();
+
+          int count = pendingDocs.length;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  tr("مرحباً د. ") + (FirebaseAuth.instance.currentUser?.displayName ?? tr("طبيب")),
-                  style: GoogleFonts.elMessiri(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: primaryGreen,
-                  ),
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance.collection('Doctors').doc(FirebaseAuth.instance.currentUser?.uid).snapshots(),
+                  builder: (context, docSnap) {
+                    Color statusColor = Colors.grey;
+                    String tooltip = "غير معروف";
+                    if (docSnap.hasData && docSnap.data!.exists) {
+                      var data = docSnap.data!.data() as Map<String, dynamic>?;
+                      var isApproved = data?['isApproved'];
+                      if (isApproved == true || isApproved == null) {
+                        statusColor = Colors.green;
+                        tooltip = "حساب معتمد";
+                      } else if (isApproved == false) {
+                        statusColor = Colors.orange;
+                        tooltip = "قيد المراجعة";
+                      } else if (isApproved == 'rejected') {
+                        statusColor = Colors.red;
+                        tooltip = "مرفوض";
+                      }
+                    }
+                    return Row(
+                      children: [
+                        Text(
+                          tr("مرحباً د. ") +
+                              (FirebaseAuth.instance.currentUser?.displayName ??
+                                  tr("طبيب")),
+                          style: GoogleFonts.elMessiri(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: primaryGreen,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Tooltip(
+                          message: tooltip,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
                 ),
                 Text(
-                  tr("لديك ") + count.toString() + tr(" مواعيد جديدة اليوم"),
+                  tr("لديك ") + count.toString() + tr(" طلبات جديدة اليوم"),
                   style: const TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 25),
@@ -141,11 +206,11 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                   children: [
                     _buildStatCard(
                       tr("إجمالي الحجوزات"),
-                      "128",
+                      "${allDocs.length}",
                       Icons.calendar_month,
                     ),
                     const SizedBox(width: 15),
-                    _buildStatCard(tr("مرضى اليوم"), "$count", Icons.people),
+                    _buildStatCard(tr("طلبات جديدة"), "$count", Icons.people),
                   ],
                 ),
                 const SizedBox(height: 30),
@@ -159,21 +224,53 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                 ),
                 const SizedBox(height: 15),
 
-                if (count == 0)
+                if (pendingDocs.isEmpty)
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 20),
+                      padding: const EdgeInsets.only(top: 20, bottom: 20),
                       child: Text(tr("لا توجد طلبات معلقة حالياً")),
                     ),
                   )
                 else
-                  ...snapshot.data!.docs.map((doc) {
+                  ...pendingDocs.map((doc) {
                     var data = doc.data() as Map<String, dynamic>;
                     return _buildRequestItem(
                       doc.id,
                       data['patientName'] ?? tr("مريض"),
                       data['date'] ?? tr("اليوم"),
                       data['reason'] ?? tr("فحص"),
+                      true,
+                    );
+                  }),
+
+                const SizedBox(height: 30),
+                Text(
+                  tr("المواعيد المؤكدة"),
+                  style: GoogleFonts.elMessiri(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 15),
+
+                if (confirmedDocs.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 20, bottom: 20),
+                      child: Text(tr("لا توجد مواعيد مؤكدة حالياً")),
+                    ),
+                  )
+                else
+                  ...confirmedDocs.map((doc) {
+                    var data = doc.data() as Map<String, dynamic>;
+                    String date = data['appointmentDate'] ?? tr("اليوم");
+                    String time = data['appointmentTime'] ?? "";
+                    return _buildRequestItem(
+                      doc.id,
+                      data['patientName'] ?? tr("مريض"),
+                      date,
+                      time.isNotEmpty ? time : tr("فحص"),
+                      false,
                     );
                   }),
               ],
@@ -217,6 +314,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     String name,
     String time,
     String reason,
+    bool isPending,
   ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -253,41 +351,58 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                   ],
                 ),
               ),
-            ],
-          ),
-          const Divider(height: 25),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _updateStatus(docId, name, "رفض"),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(tr("رفض"), style: const TextStyle(color: Colors.red)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _updateStatus(docId, name, "قبول"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryGreen,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+              if (!isPending)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: primaryGreen.withAlpha(26),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    tr("قبول"),
-                    style: const TextStyle(color: Colors.white),
+                    tr("مؤكد"),
+                    style: TextStyle(color: primaryGreen, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
-              ),
             ],
           ),
+          if (isPending) ...[
+            const Divider(height: 25),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _updateStatus(docId, name, "رفض"),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      tr("رفض"),
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _updateStatus(docId, name, "قبول"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      tr("قبول"),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -343,7 +458,9 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                 title: Text(tr("الوضع الليلي")),
                 value: currentMode == ThemeMode.dark,
                 onChanged: (value) async {
-                  themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+                  themeNotifier.value = value
+                      ? ThemeMode.dark
+                      : ThemeMode.light;
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('isDark', value);
                 },
@@ -353,7 +470,10 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: Text(tr("تسجيل الخروج"), style: const TextStyle(color: Colors.red)),
+            title: Text(
+              tr("تسجيل الخروج"),
+              style: const TextStyle(color: Colors.red),
+            ),
             onTap: () async {
               await FirebaseAuth.instance.signOut();
               if (context.mounted) {
@@ -370,7 +490,9 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   }
 
   void _showChangeNameDialog() {
-    final nameController = TextEditingController(text: FirebaseAuth.instance.currentUser?.displayName);
+    final nameController = TextEditingController(
+      text: FirebaseAuth.instance.currentUser?.displayName,
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -388,14 +510,22 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
             style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
             onPressed: () async {
               try {
-                await FirebaseAuth.instance.currentUser?.updateDisplayName(nameController.text.trim());
+                await FirebaseAuth.instance.currentUser?.updateDisplayName(
+                  nameController.text.trim(),
+                );
                 final uid = FirebaseAuth.instance.currentUser?.uid;
                 if (uid != null) {
                   try {
-                    await FirebaseFirestore.instance.collection('Users').doc(uid).update({'name': nameController.text.trim()});
+                    await FirebaseFirestore.instance
+                        .collection('Users')
+                        .doc(uid)
+                        .update({'name': nameController.text.trim()});
                   } catch (_) {}
                   try {
-                    await FirebaseFirestore.instance.collection('Doctors').doc(uid).update({'name': nameController.text.trim()});
+                    await FirebaseFirestore.instance
+                        .collection('Doctors')
+                        .doc(uid)
+                        .update({'name': nameController.text.trim()});
                   } catch (_) {}
                 }
                 if (context.mounted) {
@@ -408,12 +538,18 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr("حدث خطأ: ") + e.toString()), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text(tr("حدث خطأ: ") + e.toString()),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               }
             },
-            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -439,22 +575,35 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
             style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
             onPressed: () async {
               try {
-                await FirebaseAuth.instance.currentUser?.verifyBeforeUpdateEmail(emailController.text.trim());
+                await FirebaseAuth.instance.currentUser
+                    ?.verifyBeforeUpdateEmail(emailController.text.trim());
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr("تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه."))),
+                    SnackBar(
+                      content: Text(
+                        tr(
+                          "تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه.",
+                        ),
+                      ),
+                    ),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr("حدث خطأ: ") + e.toString()), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text(tr("حدث خطأ: ") + e.toString()),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               }
             },
-            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -481,7 +630,9 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
             style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
             onPressed: () async {
               try {
-                await FirebaseAuth.instance.currentUser?.updatePassword(passwordController.text.trim());
+                await FirebaseAuth.instance.currentUser?.updatePassword(
+                  passwordController.text.trim(),
+                );
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -491,12 +642,20 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr("حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى.")), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text(
+                        tr("حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى."),
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               }
             },
-            child: Text(tr("تحديث"), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
