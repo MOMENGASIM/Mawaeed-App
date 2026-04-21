@@ -55,15 +55,22 @@ class _LoginScreenState extends State<LoginScreen> {
         String role = "Patient"; // default
 
         try {
-          var userDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
+          var userDoc = await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(uid)
+              .get();
           if (userDoc.exists && userDoc.data()!.containsKey('role')) {
             role = userDoc.data()!['role'];
           } else {
             // Fallback for existing accounts
-            var docDoc = await FirebaseFirestore.instance.collection('Doctors').doc(uid).get();
+            var docDoc = await FirebaseFirestore.instance
+                .collection('Doctors')
+                .doc(uid)
+                .get();
             if (docDoc.exists) {
               role = "Doctor";
-            } else if (emailController.text.trim().toLowerCase() == 'admin@admin.com') {
+            } else if (emailController.text.trim().toLowerCase() ==
+                'admin@admin.com') {
               role = "Admin";
             }
           }
@@ -125,115 +132,123 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context, isEnglish, child) {
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: Stack(
-          children: [
-            Positioned(
-              top: -50,
-              right: isEnglish ? null : -50,
-              left: isEnglish ? -50 : null,
-              child: CircleAvatar(
-                radius: 100,
-                backgroundColor: const Color(0xFF147A74).withAlpha(13),
-              ),
-            ),
-            Positioned(
-              top: 50,
-              right: 20,
-              child: TextButton.icon(
-                onPressed: () async {
-                  languageNotifier.value = !languageNotifier.value;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('isEnglish', languageNotifier.value);
-                },
-                icon: const Icon(Icons.language, color: Color(0xFF147A74)),
-                label: Text(
-                  tr("عربي"),
-                  style: const TextStyle(color: Color(0xFF147A74), fontWeight: FontWeight.bold),
+          body: Stack(
+            children: [
+              Positioned(
+                top: -50,
+                right: isEnglish ? null : -50,
+                left: isEnglish ? -50 : null,
+                child: CircleAvatar(
+                  radius: 100,
+                  backgroundColor: const Color(0xFF147A74).withAlpha(13),
                 ),
               ),
-            ),
-            Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 30.0),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.health_and_safety_rounded,
-                    size: 80,
-                    color: Color(0xFF147A74),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    tr("تسجيل الدخول"),
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 40),
-
-                  const SizedBox(height: 15),
-                  TextField(
-                    controller: emailController,
-                    decoration: InputDecoration(
-                      labelText: tr('الإيميل'),
-                      prefixIcon: const Icon(Icons.email),
-                      border: const OutlineInputBorder(),
+              Positioned(
+                top: 50,
+                right: 20,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    languageNotifier.value = !languageNotifier.value;
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('isEnglish', languageNotifier.value);
+                  },
+                  icon: const Icon(Icons.language, color: Color(0xFF147A74)),
+                  label: Text(
+                    tr("عربي"),
+                    style: const TextStyle(
+                      color: Color(0xFF147A74),
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 15),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: tr('كلمة المرور'),
-                      prefixIcon: const Icon(Icons.lock),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-                  ElevatedButton(
-                    onPressed: isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF147A74),
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            tr('تسجيل الدخول'),
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                  ),
-
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                ),
+              ),
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                  child: Column(
                     children: [
-                      Text(tr("ليس لديك حساب؟")),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SignUpScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          tr("سجل الآن"),
-                          style: const TextStyle(
-                            color: Color(0xFF147A74),
-                            fontWeight: FontWeight.bold,
-                          ),
+                      const Icon(
+                        Icons.health_and_safety_rounded,
+                        size: 80,
+                        color: Color(0xFF147A74),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        tr("تسجيل الدخول"),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                      const SizedBox(height: 40),
+
+                      const SizedBox(height: 15),
+                      TextField(
+                        controller: emailController,
+                        decoration: InputDecoration(
+                          labelText: tr('الإيميل'),
+                          prefixIcon: const Icon(Icons.email),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: tr('كلمة المرور'),
+                          prefixIcon: const Icon(Icons.lock),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      ElevatedButton(
+                        onPressed: isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF147A74),
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                        child: isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : Text(
+                                tr('تسجيل الدخول'),
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                      ),
+
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(tr("ليس لديك حساب؟")),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SignUpScreen(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              tr("سجل الآن"),
+                              style: const TextStyle(
+                                color: Color(0xFF147A74),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-        ),
-      );
+        );
       },
     );
   }

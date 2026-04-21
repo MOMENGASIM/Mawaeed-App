@@ -18,7 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   // متغير لتحديد الدور (null يعني لسه ما اختار)
   String? selectedRole;
   final Color primaryGreen = const Color(0xFF0F766E);
-  
+
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
@@ -39,62 +39,77 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _handleSignUp() async {
-    if (nameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty || confirmPasswordController.text.isEmpty || phoneController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr("الرجاء ملء جميع الحقول"))),
-      );
+    if (nameController.text.isEmpty ||
+        emailController.text.isEmpty ||
+        passwordController.text.isEmpty ||
+        confirmPasswordController.text.isEmpty ||
+        phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tr("الرجاء ملء جميع الحقول"))));
       return;
     }
 
     if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr("كلمات المرور غير متطابقة"))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tr("كلمات المرور غير متطابقة"))));
       return;
     }
 
     if (selectedRole == "طبيب" && specialtyController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr("الرجاء إدخال التخصص الطبي"))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tr("الرجاء إدخال التخصص الطبي"))));
       return;
     }
 
     setState(() => isLoading = true);
 
     try {
-      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
 
       if (userCredential.user != null) {
-        await userCredential.user!.updateDisplayName(nameController.text.trim());
+        await userCredential.user!.updateDisplayName(
+          nameController.text.trim(),
+        );
 
         String roleEn = selectedRole == "طبيب" ? "Doctor" : "Patient";
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('my_role', roleEn);
 
-        await FirebaseFirestore.instance.collection('Users').doc(userCredential.user!.uid).set({
-          'name': nameController.text.trim(),
-          'email': emailController.text.trim(),
-          'phone': phoneController.text.trim(),
-          'role': roleEn,
-        });
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(userCredential.user!.uid)
+            .set({
+              'name': nameController.text.trim(),
+              'email': emailController.text.trim(),
+              'phone': phoneController.text.trim(),
+              'role': roleEn,
+            });
 
         if (roleEn == "Doctor") {
-          await FirebaseFirestore.instance.collection('Doctors').doc(userCredential.user!.uid).set({
-            'name': nameController.text.trim(),
-            'email': emailController.text.trim(),
-            'phone': phoneController.text.trim(),
-            'specialty': specialtyController.text.trim(),
-            'rating': 0.0,
-          });
+          await FirebaseFirestore.instance
+              .collection('Doctors')
+              .doc(userCredential.user!.uid)
+              .set({
+                'name': nameController.text.trim(),
+                'email': emailController.text.trim(),
+                'phone': phoneController.text.trim(),
+                'specialty': specialtyController.text.trim(),
+                'rating': 0.0,
+              });
         }
 
         if (!mounted) return;
-        
-        Widget nextScreen = roleEn == "Doctor" ? const DoctorDashboard() : const PatientDashboard();
+
+        Widget nextScreen = roleEn == "Doctor"
+            ? const DoctorDashboard()
+            : const PatientDashboard();
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => nextScreen),
@@ -180,11 +195,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildTextField(tr("الاسم الكامل"), Icons.person_outline, controller: nameController),
-                _buildTextField(tr("البريد الإلكتروني"), Icons.email_outlined, controller: emailController),
+                _buildTextField(
+                  tr("الاسم الكامل"),
+                  Icons.person_outline,
+                  controller: nameController,
+                ),
+                _buildTextField(
+                  tr("البريد الإلكتروني"),
+                  Icons.email_outlined,
+                  controller: emailController,
+                ),
                 if (selectedRole == "طبيب")
-                  _buildTextField(tr("التخصص الطبي (مثال: طبيب عيون)"), Icons.medical_information_outlined, controller: specialtyController),
-                _buildTextField(tr("رقم الهاتف"), Icons.phone_outlined, controller: phoneController, isNumber: true),
+                  _buildTextField(
+                    tr("التخصص الطبي (مثال: طبيب عيون)"),
+                    Icons.medical_information_outlined,
+                    controller: specialtyController,
+                  ),
+                _buildTextField(
+                  tr("رقم الهاتف"),
+                  Icons.phone_outlined,
+                  controller: phoneController,
+                  isNumber: true,
+                ),
                 _buildTextField(
                   tr("كلمة المرور"),
                   Icons.lock_outline,
@@ -209,7 +241,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: isLoading 
+                    child: isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : Text(
                             tr("إنشاء حساب"),
@@ -257,7 +289,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   // حقل إدخال موحد
-  Widget _buildTextField(String hint, IconData icon, {bool isPass = false, bool isNumber = false, TextEditingController? controller}) {
+  Widget _buildTextField(
+    String hint,
+    IconData icon, {
+    bool isPass = false,
+    bool isNumber = false,
+    TextEditingController? controller,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(
