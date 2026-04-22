@@ -28,6 +28,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
           style: GoogleFonts.elMessiri(fontWeight: FontWeight.bold),
         ),
         leading: Icon(Icons.admin_panel_settings, color: adminColor),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.red),
+            onPressed: () async {
+              bool? confirm = await showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text(tr("تسجيل الخروج")),
+                  content: Text(tr("هل أنت متأكد أنك تريد تسجيل الخروج؟")),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: Text(tr("تراجع")),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: Text(
+                        tr("تأكيد"),
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                await FirebaseAuth.instance.signOut();
+                if (context.mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LoginScreen(),
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -62,23 +101,64 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       crossAxisSpacing: 10,
                       childAspectRatio: 1.5,
                       children: [
-                        _buildSummaryCard(
-                          tr("إجمالي المرضى"),
-                          "-",
-                          Icons.person_add,
-                          Colors.blue,
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('Users')
+                              .where('role', isEqualTo: 'Patient')
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            String count = snapshot.hasData
+                                ? snapshot.data!.docs.length.toString()
+                                : "...";
+                            return _buildSummaryCard(
+                              tr("إجمالي المرضى"),
+                              count,
+                              Icons.person_add,
+                              Colors.blue,
+                            );
+                          },
                         ),
-                        _buildSummaryCard(
-                          tr("الأطباء"),
-                          "-",
-                          Icons.medical_services,
-                          Colors.orange,
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('Doctors')
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            String count = snapshot.hasData
+                                ? snapshot.data!.docs.length.toString()
+                                : "...";
+                            return _buildSummaryCard(
+                              tr("الأطباء"),
+                              count,
+                              Icons.medical_services,
+                              Colors.orange,
+                            );
+                          },
                         ),
-                        _buildSummaryCard(
-                          tr("حجوزات اليوم"),
-                          "-",
-                          Icons.book_online,
-                          adminColor,
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('Appointments')
+                              .where(
+                                'bookingTime',
+                                isGreaterThanOrEqualTo: Timestamp.fromDate(
+                                  DateTime(
+                                    DateTime.now().year,
+                                    DateTime.now().month,
+                                    DateTime.now().day,
+                                  ),
+                                ),
+                              )
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            String count = snapshot.hasData
+                                ? snapshot.data!.docs.length.toString()
+                                : "...";
+                            return _buildSummaryCard(
+                              tr("حجوزات اليوم"),
+                              count,
+                              Icons.book_online,
+                              adminColor,
+                            );
+                          },
                         ),
                         _buildSummaryCard(
                           tr("شكاوى معلقة"),
