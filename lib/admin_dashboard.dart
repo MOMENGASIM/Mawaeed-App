@@ -175,9 +175,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     _buildHeader(tr("طلبات انضمام أطباء جدد")),
                     const SizedBox(height: 12),
                     if (pendingDoctors.isEmpty)
-                      const Text(
-                        "لا توجد طلبات معلقة حالياً",
-                        style: TextStyle(color: Colors.grey),
+                      Text(
+                        tr("لا توجد طلبات معلقة حالياً"),
+                        style: const TextStyle(color: Colors.grey),
                       )
                     else
                       ...pendingDoctors.map((doc) {
@@ -194,7 +194,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     const SizedBox(height: 30),
 
                     // 3. الشكاوى والمقترحات
-                    _buildHeader("الشكاوى والمقترحات"),
+                    _buildHeader(tr("الشكاوى والمقترحات")),
                     const SizedBox(height: 12),
                     StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
@@ -208,9 +208,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           );
                         var complaints = allComplaintsSnap.data!.docs;
                         if (complaints.isEmpty)
-                          return const Text(
-                            "لا توجد شكاوى حالياً",
-                            style: TextStyle(color: Colors.grey),
+                          return Text(
+                            tr("لا توجد شكاوى حالياً"),
+                            style: const TextStyle(color: Colors.grey),
                           );
                         return Column(
                           children: complaints.map((doc) {
@@ -221,7 +221,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   ? Theme.of(context).cardColor
                                   : Colors.red.withAlpha(13),
                               child: ListTile(
-                                title: Text(data['patientName'] ?? "مريض"),
+                                title: Text(data['patientName'] ?? tr("مريض")),
                                 subtitle: Text(data['complaintText'] ?? ""),
                                 trailing: IconButton(
                                   icon: Icon(

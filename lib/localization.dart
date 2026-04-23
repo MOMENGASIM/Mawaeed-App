@@ -1,4 +1,3 @@
-
 import 'main.dart'; // لربط languageNotifier
 
 String tr(String arText) {
@@ -36,7 +35,8 @@ const Map<String, String> translations = {
   "إنشاء حساب": "Create Account",
 
   // Patient Dashboard
-  "عفواً، لديك حجز حالي بالفعل. يجب إلغاؤه أولاً للحجز مرة أخرى.": "Sorry, you already have an active appointment. You must cancel it first.",
+  "عفواً، لديك حجز حالي بالفعل. يجب إلغاؤه أولاً للحجز مرة أخرى.":
+      "Sorry, you already have an active appointment. You must cancel it first.",
   "تم إرسال طلب الحجز لـ د. ": "Appointment request sent to Dr. ",
   " بنجاح": " successfully",
   "فشل الحجز: ": "Booking failed: ",
@@ -53,15 +53,49 @@ const Map<String, String> translations = {
   "الحالة: تم التأكيد\nالوقت: ": "Status: Confirmed\nTime: ",
   " | التاريخ: ": " | Date: ",
   "الحالة: في انتظار التأكيد": "Status: Pending Confirmation",
-  "تذكير: موعد اقترب! باقي أقل من 12 ساعة.": "Reminder: Your appointment is approaching! Less than 12 hours left.",
-  "تذكير: موعدك اقترب! باقي أقل من 12 ساعة.": "Reminder: Your appointment is approaching! Less than 12 hours left.",
+  "تذكير: موعد اقترب! باقي أقل من 12 ساعة.":
+      "Reminder: Your appointment is approaching! Less than 12 hours left.",
+  "تذكير: موعدك اقترب! باقي أقل من 12 ساعة.":
+      "Reminder: Your appointment is approaching! Less than 12 hours left.",
   "حجز موعد الآن": "Book Appointment Now",
-  
+  "تم إرسال شكواك بنجاح. سيتم مراجعتها من قبل الإدارة.":
+      "Your complaint has been sent successfully. It will be reviewed by the administration.",
+  "لديك موعد نشط حالياً. يرجى إلغاء الموعد الحالي قبل حجز موعد جديد.":
+      "You have an active appointment. Please cancel the current one before booking a new one.",
+  "ابحث عن طبيب عيون...": "Search for eye doctor...",
+  "مواعيدك": "Your Appointments",
+  "لا توجد مواعيد حالياً": "No appointments currently",
+  "في انتظار التأكيد من الطبيب": "Waiting for confirmation from doctor",
+  "موعد مؤكد: ": "Confirmed Appointment: ",
+  "عذراً، تم رفض طلب الموعد من قبل الطبيب":
+      "Sorry, the appointment request was rejected by the doctor",
+  "لم يتم العثور على أطباء يطابقون بحثك":
+      "No doctors found matching your search",
+  "صندوق الشكاوى والمقترحات": "Complaints and Suggestions Box",
+  "إذا واجهتك أي مشكلة أو كان لديك مقترح لتحسين الخدمة، نرجو إرساله للإدارة:":
+      "If you encounter any problem or have a suggestion to improve the service, please send it to the administration:",
+  "اكتب شكواك أو مقترحك هنا...": "Write your complaint or suggestion here...",
+  "إرسال للإدارة": "Send to Administration",
+  "موعدك مع ": "Your appointment with ",
+  "إلغاء الموعد": "Cancel Appointment",
+  "هل أنت متأكد من رغبتك في إلغاء هذا الموعد؟":
+      "Are you sure you want to cancel this appointment?",
+  "تأكيد الإلغاء": "Confirm Cancellation",
+  "تم إلغاء الموعد بنجاح": "Appointment cancelled successfully",
+  "حدث خطأ أثناء الإلغاء: ": "Error occurred during cancellation: ",
+  "إخفاء": "Hide",
+  "الملف الشخصي": "Profile",
+  "السيرة الذاتية والخبرات": "CV and Experiences",
+  "لا توجد تفاصيل عن السيرة الذاتية أو الخبرات.":
+      "No details about CV or experiences available.",
+  "إغلاق": "Close",
+  "حجز موعد": "Book Appointment",
+
   // Doctor Dashboard
   "تم ": "Successfully ",
   " موعد: ": " appointment: ",
-  "قبول": "Accepted",
-  "رفض": "Rejected",
+  "قبول": "Accept",
+  "رفض": "Reject",
   "لوحة تحكم الطبيب": "Doctor Dashboard",
   "مرحباً د. ": "Welcome Dr. ",
   "لديك ": "You have ",
@@ -72,7 +106,15 @@ const Map<String, String> translations = {
   "لا توجد طلبات معلقة حالياً": "No pending requests currently",
   "اليوم": "Today",
   "فحص": "Checkup",
-  
+  "طلبات جديدة": "New Requests",
+  "المواعيد المؤكدة": "Confirmed Appointments",
+  "لا توجد مواعيد مؤكدة حالياً": "No confirmed appointments currently",
+  "مؤكد": "Confirmed",
+  "قيد المراجعة": "Under Review",
+  "حساب معتمد": "Approved Account",
+  "غير معروف": "Unknown",
+  "طلبات جديدة اليوم": " new requests today",
+
   // Admin Dashboard
   "لوحة الإدارة": "Admin Dashboard",
   "إحصائيات النظام": "System Statistics",
@@ -80,11 +122,18 @@ const Map<String, String> translations = {
   "الأطباء": "Doctors",
   "حجوزات اليوم": "Today's Bookings",
   "شكاوى معلقة": "Pending Complaints",
-  "طلبات انضمام أطباء جدد": "New Doctor Requests",
+  "طلبات انضمام أطباء جدد": "New Doctor Joining Requests",
   "إجراءات سريعة": "Quick Actions",
   "إضافة مدير للنظام": "Add System Admin",
   "تصدير تقارير الأداء": "Export Performance Reports",
-  
+  "هل أنت متأكد أنك تريد تسجيل الخروج؟": "Are you sure you want to logout?",
+  "تراجع": "Back",
+  "تأكيد": "Confirm",
+  "طبيب بدون اسم": "Doctor without name",
+  "لا توجد سيرة ذاتية": "No CV available",
+  "الشكاوى والمقترحات": "Complaints and Suggestions",
+  "لا توجد شكاوى حالياً": "No complaints currently",
+
   // Sidebar Shared
   "تغيير الاسم": "Change Name",
   "تغيير الإيميل": "Change Email",
@@ -97,12 +146,15 @@ const Map<String, String> translations = {
   "تم تغيير الاسم بنجاح": "Name changed successfully",
   "حدث خطأ: ": "Error occurred: ",
   "الإيميل الجديد": "New Email",
-  "تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه.": "A confirmation link has been sent to your new email. Please check it.",
+  "تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه.":
+      "A confirmation link has been sent to your new email. Please check it.",
   "كلمة المرور الجديدة": "New Password",
   "تم تغيير كلمة المرور بنجاح": "Password changed successfully",
-  "حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى.": "Error occurred. You may need to log in again.",
+  "حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى.":
+      "Error occurred. You may need to log in again.",
   "حجز مواعيد مستشفى العيون": "Eye Hospital Appointments",
-  "عفواً، لديك حجز معلق بالفعل. يجب إلغاؤه أولاً للحجز مرة أخرى.": "Sorry, you already have a pending appointment. You must cancel it first.",
+  "عفواً، لديك حجز معلق بالفعل. يجب إلغاؤه أولاً للحجز مرة أخرى.":
+      "Sorry, you already have a pending appointment. You must cancel it first.",
   "د. خالد عيسى": "Dr. Khaled Eissa",
   "جراحة عامة": "General Surgery",
   "شهادة تخصص + ترخيص": "Specialty Certificate + License",
@@ -112,4 +164,22 @@ const Map<String, String> translations = {
   "تأكيد كلمة المرور": "Confirm Password",
   "رقم الهاتف": "Phone Number",
   "كلمات المرور غير متطابقة": "Passwords do not match",
+  "المريض": "Patient",
+  "الطبيب": "Doctor",
+  "المسؤول": "Admin",
+  "تم إنشاء الحساب بنجاح. ملفك الآن قيد المراجعة من قبل الإدارة.":
+      "Account created successfully. Your profile is now under review by the administration.",
+  "السيرة الذاتية أو الخبرات": "CV or Experiences",
+  "طبيب عيون": "Eye Doctor",
+  "مخ وأعصاب": "Neurology",
+  "قلب وأوعية دموية": "Cardiology",
+  "أنف وأذن وحنجرة": "ENT",
+  "عظام": "Orthopedics",
+  "جلدية": "Dermatology",
+  "أسنان": "Dentistry",
+  "باطنية": "Internal Medicine",
+  "نساء وتوليد": "Obstetrics and Gynecology",
+  "نفسي": "Psychiatry",
+  "مسالك بولية": "Urology",
+  "أطفال": "Pediatrics",
 };

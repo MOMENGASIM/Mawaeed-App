@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
+import 'localization.dart';
 
 class PatientDashboard extends StatefulWidget {
   const PatientDashboard({super.key});
@@ -40,8 +41,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
       complaintController.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("تم إرسال شكواك بنجاح. سيتم مراجعتها من قبل الإدارة."),
+          SnackBar(
+            content: Text(
+              tr("تم إرسال شكواك بنجاح. سيتم مراجعتها من قبل الإدارة."),
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -72,9 +75,11 @@ class _PatientDashboardState extends State<PatientDashboard> {
       if (existing.docs.isNotEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                "لديك موعد نشط حالياً. يرجى إلغاء الموعد الحالي قبل حجز موعد جديد.",
+                tr(
+                  "لديك موعد نشط حالياً. يرجى إلغاء الموعد الحالي قبل حجز موعد جديد.",
+                ),
               ),
               backgroundColor: Colors.orange,
             ),
@@ -96,7 +101,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("تم إرسال طلب الحجز لـ $dName بنجاح"),
+            content: Text(tr("تم إرسال طلب الحجز لـ ") + dName + tr(" بنجاح")),
             backgroundColor: Colors.green,
           ),
         );
@@ -104,7 +109,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("فشل الحجز: $e"), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(tr("فشل الحجز: ") + e.toString()),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -130,7 +138,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "مرحباً، ${FirebaseAuth.instance.currentUser?.displayName ?? 'مريض'}",
+              tr("مرحباً، ") +
+                  (FirebaseAuth.instance.currentUser?.displayName ??
+                      tr('مريض')),
               style: GoogleFonts.elMessiri(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -141,7 +151,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
             TextField(
               onChanged: _onSearch,
               decoration: InputDecoration(
-                hintText: 'ابحث عن طبيب عيون...',
+                hintText: tr('ابحث عن طبيب عيون...'),
                 prefixIcon: Icon(Icons.search, color: primaryGreen),
                 filled: true,
                 fillColor: Theme.of(context).cardColor,
@@ -152,7 +162,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               ),
             ),
             const SizedBox(height: 30),
-            _buildHeader("مواعيدك"),
+            _buildHeader(tr("مواعيدك")),
             const SizedBox(height: 12),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -167,9 +177,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Text(
-                    "لا توجد مواعيد حالياً",
-                    style: TextStyle(color: Colors.grey),
+                  return Text(
+                    tr("لا توجد مواعيد حالياً"),
+                    style: const TextStyle(color: Colors.grey),
                   );
                 }
 
@@ -177,12 +187,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
                   children: snapshot.data!.docs.map((doc) {
                     var data = doc.data() as Map<String, dynamic>;
                     String status = data['status'] ?? 'pending';
-                    String timeStr = "في انتظار التأكيد من الطبيب";
+                    String timeStr = tr("في انتظار التأكيد من الطبيب");
                     if (status == 'confirmed') {
                       timeStr =
                           "موعد مؤكد: ${data['appointmentDate'] ?? ''} ${data['appointmentTime'] ?? ''}";
                     } else if (status == 'rejected') {
-                      timeStr = "عذراً، تم رفض طلب الموعد من قبل الطبيب";
+                      timeStr = tr("عذراً، تم رفض طلب الموعد من قبل الطبيب");
                     }
 
                     return Padding(
@@ -199,7 +209,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               },
             ),
             const SizedBox(height: 30),
-            _buildHeader("الأطباء المتاحين الآن"),
+            _buildHeader(tr("الأطباء المتاحين الآن")),
             const SizedBox(height: 12),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -226,12 +236,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 }).toList();
 
                 if (doctors.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Center(
                       child: Text(
-                        "لم يتم العثور على أطباء يطابقون بحثك",
-                        style: TextStyle(color: Colors.grey),
+                        tr("لم يتم العثور على أطباء يطابقون بحثك"),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ),
                   );
@@ -242,23 +252,25 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     Map<String, dynamic> data =
                         doc.data() as Map<String, dynamic>;
                     String specialty =
-                        data['specialty'] ?? data['Specialty'] ?? 'تخصص عام';
+                        data['specialty'] ??
+                        data['Specialty'] ??
+                        tr('تخصص عام');
                     return _buildDoctorItem(
-                      data['name'] ?? 'بدون اسم',
+                      data['name'] ?? tr('بدون اسم'),
                       specialty,
                       (data['Rating'] ?? data['rating'] ?? 0.0).toString(),
                       onBook: () => _handleBooking(
-                        data['name'] ?? 'بدون اسم',
+                        data['name'] ?? tr('بدون اسم'),
                         specialty,
                         doc.id,
                       ),
                       onProfile: () => _showDoctorProfile(
                         context,
-                        data['name'] ?? 'بدون اسم',
+                        data['name'] ?? tr('بدون اسم'),
                         specialty,
                         (data['Rating'] ?? data['rating'] ?? 0.0).toString(),
                         data['cv'] ??
-                            'لا توجد تفاصيل عن السيرة الذاتية أو الخبرات.',
+                            tr('لا توجد تفاصيل عن السيرة الذاتية أو الخبرات.'),
                       ),
                     );
                   }).toList(),
@@ -268,18 +280,20 @@ class _PatientDashboardState extends State<PatientDashboard> {
             const SizedBox(height: 40),
             const Divider(),
             const SizedBox(height: 20),
-            _buildHeader("صندوق الشكاوى والمقترحات"),
+            _buildHeader(tr("صندوق الشكاوى والمقترحات")),
             const SizedBox(height: 10),
-            const Text(
-              "إذا واجهتك أي مشكلة أو كان لديك مقترح لتحسين الخدمة، نرجو إرساله للإدارة:",
-              style: TextStyle(color: Colors.grey),
+            Text(
+              tr(
+                "إذا واجهتك أي مشكلة أو كان لديك مقترح لتحسين الخدمة، نرجو إرساله للإدارة:",
+              ),
+              style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 15),
             TextField(
               controller: complaintController,
               maxLines: 4,
               decoration: InputDecoration(
-                hintText: "اكتب شكواك أو مقترحك هنا...",
+                hintText: tr("اكتب شكواك أو مقترحك هنا..."),
                 filled: true,
                 fillColor: Theme.of(context).cardColor,
                 border: OutlineInputBorder(
@@ -299,9 +313,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text(
-                  "إرسال للإدارة",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                child: Text(
+                  tr("إرسال للإدارة"),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -344,7 +361,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "موعدك مع $doctorName",
+                  tr("موعدك مع ") + doctorName,
                   style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 Text(
@@ -364,20 +381,20 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 bool? confirm = await showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text("إلغاء الموعد"),
-                    content: const Text(
-                      "هل أنت متأكد من رغبتك في إلغاء هذا الموعد؟",
+                    title: Text(tr("إلغاء الموعد")),
+                    content: Text(
+                      tr("هل أنت متأكد من رغبتك في إلغاء هذا الموعد؟"),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text("تراجع"),
+                        child: Text(tr("تراجع")),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context, true),
-                        child: const Text(
-                          "تأكيد الإلغاء",
-                          style: TextStyle(color: Colors.red),
+                        child: Text(
+                          tr("تأكيد الإلغاء"),
+                          style: const TextStyle(color: Colors.red),
                         ),
                       ),
                     ],
@@ -392,21 +409,25 @@ class _PatientDashboardState extends State<PatientDashboard> {
                         .delete();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("تم إلغاء الموعد بنجاح")),
+                        SnackBar(content: Text(tr("تم إلغاء الموعد بنجاح"))),
                       );
                     }
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("حدث خطأ أثناء الإلغاء: $e")),
+                        SnackBar(
+                          content: Text(
+                            tr("حدث خطأ أثناء الإلغاء: ") + e.toString(),
+                          ),
+                        ),
                       );
                     }
                   }
                 }
               },
-              child: const Text(
-                "إلغاء",
-                style: TextStyle(color: Colors.white70),
+              child: Text(
+                tr("إلغاء"),
+                style: const TextStyle(color: Colors.white70),
               ),
             )
           else
@@ -421,9 +442,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
                   debugPrint("خطأ في حذف الموعد المرفوض: $e");
                 }
               },
-              child: const Text(
-                "إخفاء",
-                style: TextStyle(color: Colors.white70),
+              child: Text(
+                tr("إخفاء"),
+                style: const TextStyle(color: Colors.white70),
               ),
             ),
         ],
@@ -446,7 +467,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
+          BoxShadow(color: Colors.black.withAlpha(13), blurRadius: 5),
         ],
       ),
       child: Column(
@@ -455,7 +476,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundColor: primaryGreen.withValues(alpha: 0.1),
+                backgroundColor: primaryGreen.withAlpha(26),
                 child: Icon(Icons.person, color: primaryGreen, size: 35),
               ),
               const SizedBox(width: 15),
@@ -511,7 +532,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     side: BorderSide(color: primaryGreen),
                   ),
                   child: Text(
-                    "الملف الشخصي",
+                    tr("الملف الشخصي"),
                     style: TextStyle(
                       color: primaryGreen,
                       fontWeight: FontWeight.bold,
@@ -530,9 +551,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    "حجز موعد",
-                    style: TextStyle(
+                  child: Text(
+                    tr("حجز موعد"),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -581,7 +602,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               children: [
                 CircleAvatar(
                   radius: 35,
-                  backgroundColor: primaryGreen.withValues(alpha: 0.1),
+                  backgroundColor: primaryGreen.withAlpha(26),
                   child: Icon(Icons.person, color: primaryGreen, size: 40),
                 ),
                 const SizedBox(width: 15),
@@ -612,7 +633,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: Colors.orange.withAlpha(26),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -633,9 +654,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
               ],
             ),
             const SizedBox(height: 25),
-            const Text(
-              "السيرة الذاتية والخبرات",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              tr("السيرة الذاتية والخبرات"),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             Container(
@@ -646,7 +667,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: Text(
-                cv,
+                tr(cv),
                 style: const TextStyle(fontSize: 15, height: 1.5),
               ),
             ),
@@ -662,9 +683,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  "إغلاق",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+                child: Text(
+                  tr("إغلاق"),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
             ),
@@ -682,7 +703,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
           UserAccountsDrawerHeader(
             decoration: BoxDecoration(color: primaryGreen),
             accountName: Text(
-              FirebaseAuth.instance.currentUser?.displayName ?? "مريض",
+              FirebaseAuth.instance.currentUser?.displayName ?? tr("مريض"),
             ),
             accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
             currentAccountPicture: const CircleAvatar(
@@ -692,7 +713,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
           ),
           ListTile(
             leading: const Icon(Icons.person),
-            title: const Text("تغيير الاسم"),
+            title: Text(tr("تغيير الاسم")),
             onTap: () {
               Navigator.pop(context);
               _showChangeNameDialog();
@@ -700,7 +721,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
           ),
           ListTile(
             leading: const Icon(Icons.email),
-            title: const Text("تغيير الإيميل"),
+            title: Text(tr("تغيير الإيميل")),
             onTap: () {
               Navigator.pop(context);
               _showChangeEmailDialog();
@@ -708,7 +729,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
           ),
           ListTile(
             leading: const Icon(Icons.lock),
-            title: const Text("تغيير كلمة المرور"),
+            title: Text(tr("تغيير كلمة المرور")),
             onTap: () {
               Navigator.pop(context);
               _showChangePasswordDialog();
@@ -720,7 +741,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
             builder: (context, currentMode, child) {
               return SwitchListTile(
                 secondary: const Icon(Icons.dark_mode),
-                title: const Text("الوضع الليلي"),
+                title: Text(tr("الوضع الليلي")),
                 value: currentMode == ThemeMode.dark,
                 onChanged: (value) async {
                   themeNotifier.value = value
@@ -735,9 +756,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              "تسجيل الخروج",
-              style: TextStyle(color: Colors.red),
+            title: Text(
+              tr("تسجيل الخروج"),
+              style: const TextStyle(color: Colors.red),
             ),
             onTap: () async {
               await FirebaseAuth.instance.signOut();
@@ -761,15 +782,15 @@ class _PatientDashboardState extends State<PatientDashboard> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("تغيير الاسم"),
+        title: Text(tr("تغيير الاسم")),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(labelText: "الاسم الجديد"),
+          decoration: InputDecoration(labelText: tr("الاسم الجديد")),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("إلغاء"),
+            child: Text(tr("إلغاء")),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
@@ -791,21 +812,24 @@ class _PatientDashboardState extends State<PatientDashboard> {
                   Navigator.pop(context);
                   setState(() {});
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("تم تغيير الاسم بنجاح")),
+                    SnackBar(content: Text(tr("تم تغيير الاسم بنجاح"))),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text("حدث خطأ: $e"),
+                      content: Text(tr("حدث خطأ: ") + e.toString()),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               }
             },
-            child: const Text("تحديث", style: TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -817,15 +841,15 @@ class _PatientDashboardState extends State<PatientDashboard> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("تغيير الإيميل"),
+        title: Text(tr("تغيير الإيميل")),
         content: TextField(
           controller: emailController,
-          decoration: const InputDecoration(labelText: "الإيميل الجديد"),
+          decoration: InputDecoration(labelText: tr("الإيميل الجديد")),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("إلغاء"),
+            child: Text(tr("إلغاء")),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
@@ -836,9 +860,11 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
-                        "تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه.",
+                        tr(
+                          "تم إرسال رابط تأكيد للإيميل الجديد. يرجى التحقق منه.",
+                        ),
                       ),
                     ),
                   );
@@ -847,14 +873,17 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text("حدث خطأ: $e"),
+                      content: Text(tr("حدث خطأ: ") + e.toString()),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               }
             },
-            child: const Text("تحديث", style: TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -866,16 +895,16 @@ class _PatientDashboardState extends State<PatientDashboard> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("تغيير كلمة المرور"),
+        title: Text(tr("تغيير كلمة المرور")),
         content: TextField(
           controller: passwordController,
           obscureText: true,
-          decoration: const InputDecoration(labelText: "كلمة المرور الجديدة"),
+          decoration: InputDecoration(labelText: tr("كلمة المرور الجديدة")),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("إلغاء"),
+            child: Text(tr("إلغاء")),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
@@ -887,15 +916,15 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("تم تغيير كلمة المرور بنجاح")),
+                    SnackBar(content: Text(tr("تم تغيير كلمة المرور بنجاح"))),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
-                        "حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى.",
+                        tr("حدث خطأ. قد تحتاج لتسجيل الدخول مرة أخرى."),
                       ),
                       backgroundColor: Colors.red,
                     ),
@@ -903,7 +932,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 }
               }
             },
-            child: const Text("تحديث", style: TextStyle(color: Colors.white)),
+            child: Text(
+              tr("تحديث"),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
