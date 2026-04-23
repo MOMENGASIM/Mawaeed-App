@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'localization.dart';
+import 'notification_service.dart';
 
 class PatientDashboard extends StatefulWidget {
   const PatientDashboard({super.key});
@@ -16,7 +17,8 @@ class PatientDashboard extends StatefulWidget {
 
 class _PatientDashboardState extends State<PatientDashboard> {
   // الألوان الأساسية
-  final Color primaryGreen = const Color(0xFF0F766E);
+  final Color primaryGreen = const Color(0xFF2563EB); // الأزرق المعتمد من اللوجو
+  final Color navyColor = const Color(0xFF001529);
   String searchQuery = "";
   final complaintController = TextEditingController();
 
@@ -124,10 +126,26 @@ class _PatientDashboardState extends State<PatientDashboard> {
       drawer: _buildSideBar(context),
       appBar: AppBar(
         elevation: 0,
-        iconTheme: IconThemeData(color: primaryGreen),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF001529), Color(0xFF000B18)],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          tr("لوحة تحكم المريض"),
+          style: GoogleFonts.elMessiri(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_none, color: primaryGreen),
+            icon: const Icon(Icons.notifications_none, color: Colors.white),
             onPressed: () {},
           ),
         ],
@@ -181,6 +199,20 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     tr("لا توجد مواعيد حالياً"),
                     style: const TextStyle(color: Colors.grey),
                   );
+                }
+
+                // جدولة إشعارات للمواعيد المؤكدة التي لها timestamp
+                for (var doc in snapshot.data!.docs) {
+                  var d = doc.data() as Map<String, dynamic>;
+                  if (d['status'] == 'confirmed' &&
+                      d['appointmentTimestamp'] != null) {
+                    final ts = d['appointmentTimestamp'] as Timestamp;
+                    NotificationService().scheduleAppointmentReminder(
+                      appointmentId: doc.id,
+                      appointmentDateTime: ts.toDate(),
+                      doctorName: d['doctorName'] ?? 'الطبيب',
+                    );
+                  }
                 }
 
                 return Column(
@@ -403,6 +435,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
 
                 if (confirm == true) {
                   try {
+                    // إلغاء إشعار التذكير أولاً
+                    await NotificationService().cancelAppointmentReminder(docId);
                     await FirebaseFirestore.instance
                         .collection('Appointments')
                         .doc(docId)
@@ -434,6 +468,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
             TextButton(
               onPressed: () async {
                 try {
+                  // إلغاء إشعار التذكير أولاً
+                  await NotificationService().cancelAppointmentReminder(docId);
                   await FirebaseFirestore.instance
                       .collection('Appointments')
                       .doc(docId)
@@ -701,15 +737,20 @@ class _PatientDashboardState extends State<PatientDashboard> {
         padding: EdgeInsets.zero,
         children: [
           UserAccountsDrawerHeader(
-            decoration: BoxDecoration(color: primaryGreen),
-            accountName: Text(
-              FirebaseAuth.instance.currentUser?.displayName ?? tr("مريض"),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF001529), Color(0xFF000B18)],
+              ),
             ),
-            accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
             currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.person),
+              child: Icon(Icons.person, size: 40, color: Color(0xFF2563EB)),
             ),
+            accountName: Text(
+              tr("مرحباً بك"),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
           ),
           ListTile(
             leading: const Icon(Icons.person),

@@ -17,7 +17,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   // متغير لتحديد الدور (null يعني لسه ما اختار)
   String? selectedRole;
-  final Color primaryGreen = const Color(0xFF0F766E);
+  final Color primaryGreen = const Color(0xFF3B82F6);
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
@@ -152,139 +152,176 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // شعار بسيط أو نص ترحيبي
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  'assets/app_icon.jpeg',
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                tr("إنشاء حساب جديد"),
-                style: GoogleFonts.elMessiri(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              // داخل children: [ ... ]
-              const SizedBox(height: 20),
-              if (selectedRole == null) ...[
-                // 1. واجهة اختيار الدور (بتظهر في البداية فقط)
-                Text(
-                  tr("سجل كـ:"),
-                  style: GoogleFonts.elMessiri(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+      body: Stack(
+        children: [
+          // خلفية بيضاء أو كحلية حسب الوضع
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF000B18) : Colors.white,
+            ),
+          ),
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF001D3D).withAlpha(200)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF3B82F6).withAlpha(isDark ? 50 : 30),
                   ),
-                ),
-                const SizedBox(height: 25),
-                Row(
-                  children: [
-                    _buildRoleCard("مريض", Icons.person, Colors.blue),
-                    const SizedBox(width: 15),
-                    _buildRoleCard(
-                      "طبيب",
-                      Icons.medical_services,
-                      primaryGreen,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(isDark ? 50 : 15),
+                      blurRadius: 20,
                     ),
                   ],
                 ),
-              ] else ...[
-                // 2. واجهة البيانات (بتظهر لما يختار الدور)
-                Row(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, size: 18),
-                      onPressed: () => setState(
-                        () => selectedRole = null,
-                      ), // يرجع يختار الدور
+                    // اللوجو (العين)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(100),
+                      child: Image.asset(
+                        'assets/app_icon.png',
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                              Icons.remove_red_eye,
+                              size: 50,
+                              color: Color(0xFF2563EB),
+                            ),
+                      ),
                     ),
+                    const SizedBox(height: 10),
                     Text(
-                      tr("التسجيل كـ ") + tr(selectedRole!),
-                      style: TextStyle(
-                        color: primaryGreen,
+                      tr("إنشاء حساب جديد"),
+                      style: GoogleFonts.elMessiri(
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    // داخل children: [ ... ]
+                    const SizedBox(height: 20),
+                    if (selectedRole == null) ...[
+                      // 1. واجهة اختيار الدور (بتظهر في البداية فقط)
+                      Text(
+                        tr("سجل كـ:"),
+                        style: GoogleFonts.elMessiri(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      Row(
+                        children: [
+                          _buildRoleCard("مريض", Icons.person, Colors.blue),
+                          const SizedBox(width: 15),
+                          _buildRoleCard(
+                            "طبيب",
+                            Icons.medical_services,
+                            primaryGreen,
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      // 2. واجهة البيانات (بتظهر لما يختار الدور)
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back_ios, size: 18),
+                            onPressed: () => setState(
+                              () => selectedRole = null,
+                            ), // يرجع يختار الدور
+                          ),
+                          Text(
+                            tr("التسجيل كـ ") + tr(selectedRole!),
+                            style: TextStyle(
+                              color: primaryGreen,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        tr("الاسم الكامل"),
+                        Icons.person_outline,
+                        controller: nameController,
+                      ),
+                      _buildTextField(
+                        tr("البريد الإلكتروني"),
+                        Icons.email_outlined,
+                        controller: emailController,
+                      ),
+                      if (selectedRole == "طبيب") ...[
+                        _buildTextField(
+                          tr("التخصص الطبي (مثال: طبيب عيون)"),
+                          Icons.medical_information_outlined,
+                          controller: specialtyController,
+                        ),
+                        _buildTextField(
+                          tr("السيرة الذاتية أو الخبرات"),
+                          Icons.description_outlined,
+                          controller: cvController,
+                          maxLines: 3,
+                        ),
+                      ],
+                      _buildTextField(
+                        tr("رقم الهاتف"),
+                        Icons.phone_outlined,
+                        controller: phoneController,
+                        isNumber: true,
+                      ),
+                      _buildTextField(
+                        tr("كلمة المرور"),
+                        Icons.lock_outline,
+                        isPass: true,
+                        controller: passwordController,
+                      ),
+                      _buildTextField(
+                        tr("تأكيد كلمة المرور"),
+                        Icons.lock_outline,
+                        isPass: true,
+                        controller: confirmPasswordController,
+                      ),
+                      const SizedBox(height: 30),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : _handleSignUp,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryGreen,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : Text(
+                                  tr("إنشاء حساب"),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 20),
-                _buildTextField(
-                  tr("الاسم الكامل"),
-                  Icons.person_outline,
-                  controller: nameController,
-                ),
-                _buildTextField(
-                  tr("البريد الإلكتروني"),
-                  Icons.email_outlined,
-                  controller: emailController,
-                ),
-                if (selectedRole == "طبيب") ...[
-                  _buildTextField(
-                    tr("التخصص الطبي (مثال: طبيب عيون)"),
-                    Icons.medical_information_outlined,
-                    controller: specialtyController,
-                  ),
-                  _buildTextField(
-                    tr("السيرة الذاتية أو الخبرات"),
-                    Icons.description_outlined,
-                    controller: cvController,
-                    maxLines: 3,
-                  ),
-                ],
-                _buildTextField(
-                  tr("رقم الهاتف"),
-                  Icons.phone_outlined,
-                  controller: phoneController,
-                  isNumber: true,
-                ),
-                _buildTextField(
-                  tr("كلمة المرور"),
-                  Icons.lock_outline,
-                  isPass: true,
-                  controller: passwordController,
-                ),
-                _buildTextField(
-                  tr("تأكيد كلمة المرور"),
-                  Icons.lock_outline,
-                  isPass: true,
-                  controller: confirmPasswordController,
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : _handleSignUp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryGreen,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            tr("إنشاء حساب"),
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                  ),
-                ),
-              ],
-            ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

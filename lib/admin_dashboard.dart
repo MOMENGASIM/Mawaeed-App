@@ -15,7 +15,8 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  final Color adminColor = const Color(0xFF0F766E); // الأخضر المعتمد
+  final Color adminColor = const Color(0xFF2563EB); // الأزرق المعتمد من اللوجو
+  final Color navyColor = const Color(0xFF001529);
 
   @override
   Widget build(BuildContext context) {
@@ -23,11 +24,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
       drawer: _buildSideBar(context),
       appBar: AppBar(
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF001529), Color(0xFF000B18)],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           tr("لوحة الإدارة"),
-          style: GoogleFonts.elMessiri(fontWeight: FontWeight.bold),
+          style: GoogleFonts.elMessiri(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        leading: Icon(Icons.admin_panel_settings, color: adminColor),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.red),
@@ -367,15 +386,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
         padding: EdgeInsets.zero,
         children: [
           UserAccountsDrawerHeader(
-            decoration: BoxDecoration(color: adminColor),
-            accountName: Text(
-              FirebaseAuth.instance.currentUser?.displayName ?? tr("مسؤول"),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF001529), Color(0xFF000B18)],
+              ),
             ),
-            accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
             currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.person),
+              child: Icon(Icons.admin_panel_settings, size: 40, color: Color(0xFF2563EB)),
             ),
+            accountName: Text(
+              tr("المسؤول"),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
           ),
           ListTile(
             leading: const Icon(Icons.person),

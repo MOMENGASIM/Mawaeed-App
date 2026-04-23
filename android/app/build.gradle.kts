@@ -1,17 +1,18 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // ضيف السطر ده هنا تحتهم
     id("com.google.gms.google-services")
-    
     id("dev.flutter.flutter-gradle-plugin")
 }
+
 android {
     namespace = "com.example.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // مطلوب لـ flutter_local_notifications
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -21,10 +22,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.mawaeed_m.app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // minSdk 21 مطلوب لـ flutter_local_notifications
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -33,8 +32,6 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -43,4 +40,10 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // مطلوب لتفعيل Core Library Desugaring
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+
 apply(plugin = "com.google.gms.google-services")

@@ -130,19 +130,25 @@ class _LoginScreenState extends State<LoginScreen> {
     return ValueListenableBuilder<bool>(
       valueListenable: languageNotifier,
       builder: (context, isEnglish, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Stack(
             children: [
-              Positioned(
-                top: -50,
-                right: isEnglish ? null : -50,
-                left: isEnglish ? -50 : null,
-                child: CircleAvatar(
-                  radius: 100,
-                  backgroundColor: const Color(0xFF147A74).withAlpha(13),
+              // خلفية بيضاء مع تدرج خفيف في الأعلى
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF000B18) : Colors.white,
                 ),
               ),
+              if (!isDark)
+                Positioned(
+                  top: -100,
+                  right: -100,
+                  child: CircleAvatar(
+                    radius: 200,
+                    backgroundColor: const Color(0xFF3B82F6).withAlpha(15),
+                  ),
+                ),
               Positioned(
                 top: 50,
                 right: 20,
@@ -152,11 +158,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.setBool('isEnglish', languageNotifier.value);
                   },
-                  icon: const Icon(Icons.language, color: Color(0xFF147A74)),
+                  icon: const Icon(Icons.language, color: Color(0xFF2563EB)),
                   label: Text(
                     tr("عربي"),
                     style: const TextStyle(
-                      color: Color(0xFF147A74),
+                      color: Color(0xFF2563EB),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -166,85 +172,198 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 30.0),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.asset(
-                          'assets/app_icon.jpeg',
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
+                      // اللوجو (العين)
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF2563EB).withAlpha(50),
+                              blurRadius: 20,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(100),
+                          child: Image.asset(
+                            'assets/app_icon.png',
+                            width: 140,
+                            height: 140,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.remove_red_eye,
+                                    size: 100, color: Color(0xFF2563EB)),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        tr("تسجيل الدخول"),
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(height: 30),
+                      Container(
+                        padding: const EdgeInsets.all(25),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF001D3D).withAlpha(180)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(25),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF3B82F6,
+                            ).withAlpha(isDark ? 50 : 30),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(isDark ? 50 : 15),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 40),
-
-                      const SizedBox(height: 15),
-                      TextField(
-                        controller: emailController,
-                        decoration: InputDecoration(
-                          labelText: tr('الإيميل'),
-                          prefixIcon: const Icon(Icons.email),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: tr('كلمة المرور'),
-                          prefixIcon: const Icon(Icons.lock),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 25),
-                      ElevatedButton(
-                        onPressed: isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF147A74),
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
-                        child: isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : Text(
-                                tr('تسجيل الدخول'),
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                      ),
-
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(tr("ليس لديك حساب؟")),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SignUpScreen(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              tr("سجل الآن"),
-                              style: const TextStyle(
-                                color: Color(0xFF147A74),
+                        child: Column(
+                          children: [
+                            Text(
+                              tr("تسجيل الدخول"),
+                              style: TextStyle(
+                                fontSize: 24,
                                 fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF001529),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 30),
+                            TextField(
+                              controller: emailController,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: tr('الإيميل'),
+                                labelStyle: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.email,
+                                  color: Color(0xFF3B82F6),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : Colors.black12,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF3B82F6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            TextField(
+                              controller: passwordController,
+                              obscureText: true,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: tr('كلمة المرور'),
+                                labelStyle: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.lock,
+                                  color: Color(0xFF3B82F6),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : Colors.black12,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF3B82F6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 25),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF001529),
+                                    Color(0xFF2563EB),
+                                  ],
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: isLoading ? null : _handleLogin,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  minimumSize: const Size(double.infinity, 55),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                ),
+                                child: isLoading
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                    : Text(
+                                        tr('تسجيل الدخول'),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  tr("ليس لديك حساب؟"),
+                                  style: const TextStyle(color: Colors.grey),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SignUpScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Text(
+                                    tr("سجل الآن"),
+                                    style: const TextStyle(
+                                      color: Color(0xFF2563EB),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

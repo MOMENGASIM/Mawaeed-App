@@ -15,7 +15,8 @@ class DoctorDashboard extends StatefulWidget {
 }
 
 class _DoctorDashboardState extends State<DoctorDashboard> {
-  final Color primaryGreen = const Color(0xFF0F766E);
+  final Color primaryGreen = const Color(0xFF2563EB);
+  final Color navyColor = const Color(0xFF001529);
 
   // 1. دالة تحديث الحالة (قبول/رفض) مع الفايربيز
   Future<void> _updateStatus(
@@ -78,12 +79,14 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         var docRef = FirebaseFirestore.instance.collection('Doctors').doc(uid);
         var docSnap = await docRef.get();
         if (docSnap.exists) {
-          double currentRating = (docSnap.data()?['rating'] ?? docSnap.data()?['Rating'] ?? 0.0).toDouble();
+          double currentRating =
+              (docSnap.data()?['rating'] ?? docSnap.data()?['Rating'] ?? 0.0)
+                  .toDouble();
           double newRating = currentRating + 0.1;
           if (newRating > 5.0) newRating = 5.0;
           await docRef.update({
             'rating': double.parse(newRating.toStringAsFixed(1)),
-            'Rating': double.parse(newRating.toStringAsFixed(1))
+            'Rating': double.parse(newRating.toStringAsFixed(1)),
           });
         }
       }
@@ -107,14 +110,27 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       drawer: _buildSideBar(context),
       appBar: AppBar(
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF001529), Color(0xFF000B18)],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           tr("لوحة تحكم الطبيب"),
-          style: GoogleFonts.elMessiri(fontWeight: FontWeight.bold),
+          style: GoogleFonts.elMessiri(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           CircleAvatar(
-            backgroundColor: primaryGreen.withAlpha(26),
-            child: Icon(Icons.person, color: primaryGreen),
+            backgroundColor: Colors.white.withAlpha(50),
+            child: const Icon(Icons.person, color: Colors.white),
           ),
           const SizedBox(width: 20),
         ],
@@ -150,7 +166,10 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseFirestore.instance.collection('Doctors').doc(FirebaseAuth.instance.currentUser?.uid).snapshots(),
+                  stream: FirebaseFirestore.instance
+                      .collection('Doctors')
+                      .doc(FirebaseAuth.instance.currentUser?.uid)
+                      .snapshots(),
                   builder: (context, docSnap) {
                     Color statusColor = Colors.grey;
                     String tooltip = "غير معروف";
@@ -194,7 +213,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                         ),
                       ],
                     );
-                  }
+                  },
                 ),
                 Text(
                   tr("لديك ") + count.toString() + tr(" طلبات جديدة اليوم"),
@@ -353,14 +372,21 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
               ),
               if (!isPending)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: primaryGreen.withAlpha(26),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     tr("مؤكد"),
-                    style: TextStyle(color: primaryGreen, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: primaryGreen,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
             ],
@@ -415,15 +441,20 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         padding: EdgeInsets.zero,
         children: [
           UserAccountsDrawerHeader(
-            decoration: BoxDecoration(color: primaryGreen),
-            accountName: Text(
-              FirebaseAuth.instance.currentUser?.displayName ?? tr("طبيب"),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF001529), Color(0xFF000B18)],
+              ),
             ),
-            accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
             currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.person),
+              child: Icon(Icons.medical_services, size: 40, color: Color(0xFF2563EB)),
             ),
+            accountName: Text(
+              tr("دكتور"),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
           ),
           ListTile(
             leading: const Icon(Icons.person),

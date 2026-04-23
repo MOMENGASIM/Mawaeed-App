@@ -9,6 +9,7 @@ import 'admin_dashboard.dart';
 import 'doctor_dashboard.dart';
 import 'patient_dashboard.dart';
 import 'localization.dart';
+import 'notification_service.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 final ValueNotifier<bool> languageNotifier = ValueNotifier(false);
@@ -17,6 +18,7 @@ void main() async {
   // السطرين ديل هم اللي بيربطوا الشغل اللي عملناه في الـ Gradle بالسيرفر
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await NotificationService().init();
 
   final prefs = await SharedPreferences.getInstance();
   final isDark = prefs.getBool('isDark') ?? false;
@@ -47,39 +49,46 @@ class TeleAppointmentApp extends StatelessWidget {
               themeMode: currentMode,
               darkTheme: darkBaseTheme.copyWith(
                 colorScheme: darkBaseTheme.colorScheme.copyWith(
-                  primary: const Color(0xFF0F766E),
-                  secondary: const Color(0xFFF59E0B),
-                  surface: const Color(0xFF1E293B),
+                  primary: const Color(0xFF3B82F6),
+                  secondary: const Color(0xFF60A5FA),
+                  surface: const Color(0xFF001529),
                 ),
                 textTheme: GoogleFonts.cairoTextTheme(
-                  darkBaseTheme.textTheme,
+                  GoogleFonts.arimoTextTheme(darkBaseTheme.textTheme),
                 ).apply(bodyColor: Colors.white, displayColor: Colors.white),
-                scaffoldBackgroundColor: const Color(0xFF1E1E1E),
+                scaffoldBackgroundColor: const Color(0xFF000B18),
+                appBarTheme: const AppBarTheme(
+                  backgroundColor: Color(0xFF000B18),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
               ),
               theme: baseTheme.copyWith(
                 colorScheme: baseTheme.colorScheme.copyWith(
-                  primary: const Color(0xFF0F766E),
-                  secondary: const Color(0xFFF59E0B),
+                  primary: const Color(0xFF2563EB),
+                  secondary: const Color(0xFF3B82F6),
                   surface: Colors.white,
                 ),
-                textTheme: GoogleFonts.cairoTextTheme(baseTheme.textTheme)
-                    .apply(
-                      bodyColor: const Color(0xFF0F172A),
-                      displayColor: const Color(0xFF0F172A),
+                textTheme:
+                    GoogleFonts.cairoTextTheme(
+                      GoogleFonts.arimoTextTheme(baseTheme.textTheme),
+                    ).apply(
+                      bodyColor: const Color(0xFF001529),
+                      displayColor: const Color(0xFF001529),
                     ),
                 scaffoldBackgroundColor: Colors.white,
                 appBarTheme: const AppBarTheme(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
+                  backgroundColor: Color(0xFF001529),
+                  foregroundColor: Colors.white,
                   elevation: 0,
                 ),
                 navigationBarTheme: NavigationBarThemeData(
-                  backgroundColor: const Color(0xFF0B1220),
-                  indicatorColor: const Color(0xFF1F2937),
+                  backgroundColor: const Color(0xFFF8FAFC),
+                  indicatorColor: const Color(0xFFE2E8F0),
                   labelTextStyle: WidgetStateProperty.resolveWith((states) {
                     final color = states.contains(WidgetState.selected)
-                        ? Colors.white
-                        : Colors.white70;
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFF64748B);
                     return GoogleFonts.cairo(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -88,8 +97,8 @@ class TeleAppointmentApp extends StatelessWidget {
                   }),
                   iconTheme: WidgetStateProperty.resolveWith((states) {
                     final color = states.contains(WidgetState.selected)
-                        ? Colors.white
-                        : Colors.white70;
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFF64748B);
                     return IconThemeData(color: color);
                   }),
                 ),
