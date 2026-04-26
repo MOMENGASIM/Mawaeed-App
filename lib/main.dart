@@ -4,20 +4,30 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'login_screen.dart';
 import 'admin_dashboard.dart';
 import 'doctor_dashboard.dart';
 import 'patient_dashboard.dart';
 import 'localization.dart';
 import 'notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
-final ValueNotifier<bool> languageNotifier = ValueNotifier(false);
+// دالة لمعالجة الرسائل في الخلفية - يجب أن تكون خارج أي Class
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   // السطرين ديل هم اللي بيربطوا الشغل اللي عملناه في الـ Gradle بالسيرفر
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // تسجيل معالج الرسائل في الخلفية
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   await NotificationService().init();
 
   final prefs = await SharedPreferences.getInstance();
@@ -29,8 +39,44 @@ void main() async {
   runApp(const TeleAppointmentApp());
 }
 
-class TeleAppointmentApp extends StatelessWidget {
+class TeleAppointmentApp extends StatefulWidget {
   const TeleAppointmentApp({super.key});
+
+  @override
+  State<TeleAppointmentApp> createState() => _TeleAppointmentAppState();
+}
+
+class _TeleAppointmentAppState extends State<TeleAppointmentApp> {
+  Timer? _inactivityTimer;
+
+  void _resetTimer() {
+    _inactivityTimer?.cancel();
+    // لو المستخدم مسجل دخول، نبدأ المؤقت
+    if (FirebaseAuth.instance.currentUser != null) {
+      _inactivityTimer = Timer(const Duration(minutes: 5), _logoutUser);
+    }
+  }
+
+  void _logoutUser() async {
+    if (FirebaseAuth.instance.currentUser != null) {
+      await FirebaseAuth.instance.signOut();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('my_role');
+      if (mounted) {
+        // إعادة تشغيل التطبيق أو التوجه لصفحة اللوجين
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,89 +89,92 @@ class TeleAppointmentApp extends StatelessWidget {
         return ValueListenableBuilder<ThemeMode>(
           valueListenable: themeNotifier,
           builder: (context, ThemeMode currentMode, child) {
-            return MaterialApp(
-              debugShowCheckedModeBanner: false,
-              title: tr('حجز مواعيد مستشفى العيون'),
-              themeMode: currentMode,
-              darkTheme: darkBaseTheme.copyWith(
-                colorScheme: darkBaseTheme.colorScheme.copyWith(
-                  primary: const Color(0xFF3B82F6),
-                  secondary: const Color(0xFF60A5FA),
-                  surface: const Color(0xFF001529),
+            return Listener(
+              onPointerDown: (_) => _resetTimer(),
+              child: MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: tr('مواعيد   '),
+                themeMode: currentMode,
+                darkTheme: darkBaseTheme.copyWith(
+                  colorScheme: darkBaseTheme.colorScheme.copyWith(
+                    primary: const Color(0xFF3B82F6),
+                    secondary: const Color(0xFF60A5FA),
+                    surface: const Color(0xFF001529),
+                  ),
+                  textTheme: GoogleFonts.cairoTextTheme(
+                    GoogleFonts.arimoTextTheme(darkBaseTheme.textTheme),
+                  ).apply(bodyColor: Colors.white, displayColor: Colors.white),
+                  scaffoldBackgroundColor: const Color(0xFF000B18),
+                  appBarTheme: const AppBarTheme(
+                    backgroundColor: Color(0xFF000B18),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                  ),
                 ),
-                textTheme: GoogleFonts.cairoTextTheme(
-                  GoogleFonts.arimoTextTheme(darkBaseTheme.textTheme),
-                ).apply(bodyColor: Colors.white, displayColor: Colors.white),
-                scaffoldBackgroundColor: const Color(0xFF000B18),
-                appBarTheme: const AppBarTheme(
-                  backgroundColor: Color(0xFF000B18),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
+                theme: baseTheme.copyWith(
+                  colorScheme: baseTheme.colorScheme.copyWith(
+                    primary: const Color(0xFF2563EB),
+                    secondary: const Color(0xFF3B82F6),
+                    surface: Colors.white,
+                  ),
+                  textTheme:
+                      GoogleFonts.cairoTextTheme(
+                        GoogleFonts.arimoTextTheme(baseTheme.textTheme),
+                      ).apply(
+                        bodyColor: const Color(0xFF001529),
+                        displayColor: const Color(0xFF001529),
+                      ),
+                  scaffoldBackgroundColor: Colors.white,
+                  appBarTheme: const AppBarTheme(
+                    backgroundColor: Color(0xFF001529),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                  ),
+                  navigationBarTheme: NavigationBarThemeData(
+                    backgroundColor: const Color(0xFFF8FAFC),
+                    indicatorColor: const Color(0xFFE2E8F0),
+                    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                      final color = states.contains(WidgetState.selected)
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF64748B);
+                      return GoogleFonts.cairo(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      );
+                    }),
+                    iconTheme: WidgetStateProperty.resolveWith((states) {
+                      final color = states.contains(WidgetState.selected)
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF64748B);
+                      return IconThemeData(color: color);
+                    }),
+                  ),
                 ),
+                builder: (context, child) => Directionality(
+                  textDirection: isEnglish
+                      ? TextDirection.ltr
+                      : TextDirection.rtl,
+                  child: child ?? const SizedBox.shrink(),
+                ),
+                home: FirebaseAuth.instance.currentUser == null
+                    ? const LoginScreen()
+                    : FutureBuilder<String>(
+                        future: _getUserRole(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Scaffold(
+                              body: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+                          String role = snapshot.data ?? 'Patient';
+                          if (role == 'Admin') return const AdminDashboard();
+                          if (role == 'Doctor') return const DoctorDashboard();
+                          return const PatientDashboard();
+                        },
+                      ),
               ),
-              theme: baseTheme.copyWith(
-                colorScheme: baseTheme.colorScheme.copyWith(
-                  primary: const Color(0xFF2563EB),
-                  secondary: const Color(0xFF3B82F6),
-                  surface: Colors.white,
-                ),
-                textTheme:
-                    GoogleFonts.cairoTextTheme(
-                      GoogleFonts.arimoTextTheme(baseTheme.textTheme),
-                    ).apply(
-                      bodyColor: const Color(0xFF001529),
-                      displayColor: const Color(0xFF001529),
-                    ),
-                scaffoldBackgroundColor: Colors.white,
-                appBarTheme: const AppBarTheme(
-                  backgroundColor: Color(0xFF001529),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                ),
-                navigationBarTheme: NavigationBarThemeData(
-                  backgroundColor: const Color(0xFFF8FAFC),
-                  indicatorColor: const Color(0xFFE2E8F0),
-                  labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                    final color = states.contains(WidgetState.selected)
-                        ? const Color(0xFF2563EB)
-                        : const Color(0xFF64748B);
-                    return GoogleFonts.cairo(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    );
-                  }),
-                  iconTheme: WidgetStateProperty.resolveWith((states) {
-                    final color = states.contains(WidgetState.selected)
-                        ? const Color(0xFF2563EB)
-                        : const Color(0xFF64748B);
-                    return IconThemeData(color: color);
-                  }),
-                ),
-              ),
-              builder: (context, child) => Directionality(
-                textDirection: isEnglish
-                    ? TextDirection.ltr
-                    : TextDirection.rtl,
-                child: child ?? const SizedBox.shrink(),
-              ),
-              home: FirebaseAuth.instance.currentUser == null
-                  ? const LoginScreen()
-                  : FutureBuilder<String>(
-                      future: _getUserRole(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Scaffold(
-                            body: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-                        String role = snapshot.data ?? 'Patient';
-                        if (role == 'Admin') return const AdminDashboard();
-                        if (role == 'Doctor') return const DoctorDashboard();
-                        return const PatientDashboard();
-                      },
-                    ),
             );
           },
         );

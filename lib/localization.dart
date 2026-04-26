@@ -1,4 +1,7 @@
-import 'main.dart'; // لربط languageNotifier
+import 'package:flutter/material.dart';
+
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+final ValueNotifier<bool> languageNotifier = ValueNotifier(false);
 
 String tr(String arText) {
   if (!languageNotifier.value) return arText; // لو عربي، رجعه زي ما هو
@@ -38,6 +41,7 @@ const Map<String, String> translations = {
   "عفواً، لديك حجز حالي بالفعل. يجب إلغاؤه أولاً للحجز مرة أخرى.":
       "Sorry, you already have an active appointment. You must cancel it first.",
   "تم إرسال طلب الحجز لـ د. ": "Appointment request sent to Dr. ",
+  "تم إرسال طلب الحجز مع دكتور ": "Appointment request sent with Dr. ",
   " بنجاح": " successfully",
   "فشل الحجز: ": "Booking failed: ",
   "لوحة تحكم المريض": "Patient Dashboard",
@@ -182,4 +186,7 @@ const Map<String, String> translations = {
   "نفسي": "Psychiatry",
   "مسالك بولية": "Urology",
   "أطفال": "Pediatrics",
+  "تذكير بموعدك الطبي 🏥": "Medical Appointment Reminder 🏥",
+  "موعدك مع دكتور ": "Your appointment with Dr. ",
+  " بعد ساعة لا تنسَ": " is in one hour. Don't forget!",
 };

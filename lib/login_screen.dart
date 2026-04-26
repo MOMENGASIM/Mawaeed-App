@@ -194,8 +194,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 140,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.remove_red_eye,
-                                    size: 100, color: Color(0xFF2563EB)),
+                                const Icon(
+                                  Icons.remove_red_eye,
+                                  size: 100,
+                                  color: Color(0xFF2563EB),
+                                ),
                           ),
                         ),
                       ),

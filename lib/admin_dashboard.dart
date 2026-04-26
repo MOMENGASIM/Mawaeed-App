@@ -36,7 +36,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           tr("لوحة الإدارة"),
-          style: GoogleFonts.elMessiri(
+          style: GoogleFonts.cairo(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -289,7 +289,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildHeader(String title) {
     return Text(
       title,
-      style: GoogleFonts.elMessiri(fontSize: 20, fontWeight: FontWeight.bold),
+      style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold),
     );
   }
 
@@ -393,7 +393,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.admin_panel_settings, size: 40, color: Color(0xFF2563EB)),
+              child: Icon(
+                Icons.admin_panel_settings,
+                size: 40,
+                color: Color(0xFF2563EB),
+              ),
             ),
             accountName: Text(
               tr("المسؤول"),

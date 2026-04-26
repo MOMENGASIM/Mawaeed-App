@@ -204,7 +204,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 10),
                     Text(
                       tr("إنشاء حساب جديد"),
-                      style: GoogleFonts.elMessiri(
+                      style: GoogleFonts.cairo(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
@@ -215,7 +215,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       // 1. واجهة اختيار الدور (بتظهر في البداية فقط)
                       Text(
                         tr("سجل كـ:"),
-                        style: GoogleFonts.elMessiri(
+                        style: GoogleFonts.cairo(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),

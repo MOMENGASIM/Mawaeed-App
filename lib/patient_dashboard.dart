@@ -17,7 +17,9 @@ class PatientDashboard extends StatefulWidget {
 
 class _PatientDashboardState extends State<PatientDashboard> {
   // الألوان الأساسية
-  final Color primaryGreen = const Color(0xFF2563EB); // الأزرق المعتمد من اللوجو
+  final Color primaryGreen = const Color(
+    0xFF2563EB,
+  ); // الأزرق المعتمد من اللوجو
   final Color navyColor = const Color(0xFF001529);
   String searchQuery = "";
   final complaintController = TextEditingController();
@@ -103,7 +105,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(tr("تم إرسال طلب الحجز لـ ") + dName + tr(" بنجاح")),
+            content: Text(
+              tr("تم إرسال طلب الحجز مع دكتور ") + dName + tr(" بنجاح"),
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -138,7 +142,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           tr("لوحة تحكم المريض"),
-          style: GoogleFonts.elMessiri(
+          style: GoogleFonts.cairo(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -159,7 +163,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               tr("مرحباً، ") +
                   (FirebaseAuth.instance.currentUser?.displayName ??
                       tr('مريض')),
-              style: GoogleFonts.elMessiri(
+              style: GoogleFonts.cairo(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: primaryGreen,
@@ -170,6 +174,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               onChanged: _onSearch,
               decoration: InputDecoration(
                 hintText: tr('ابحث عن طبيب عيون...'),
+
                 prefixIcon: Icon(Icons.search, color: primaryGreen),
                 filled: true,
                 fillColor: Theme.of(context).cardColor,
@@ -242,6 +247,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
             ),
             const SizedBox(height: 30),
             _buildHeader(tr("الأطباء المتاحين الآن")),
+
             const SizedBox(height: 12),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -313,6 +319,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
             const Divider(),
             const SizedBox(height: 20),
             _buildHeader(tr("صندوق الشكاوى والمقترحات")),
+
             const SizedBox(height: 10),
             Text(
               tr(
@@ -364,7 +371,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
   Widget _buildHeader(String title) {
     return Text(
       title,
-      style: GoogleFonts.elMessiri(fontSize: 20, fontWeight: FontWeight.w700),
+      style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.w700),
     );
   }
 
@@ -436,7 +443,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 if (confirm == true) {
                   try {
                     // إلغاء إشعار التذكير أولاً
-                    await NotificationService().cancelAppointmentReminder(docId);
+                    await NotificationService().cancelAppointmentReminder(
+                      docId,
+                    );
                     await FirebaseFirestore.instance
                         .collection('Appointments')
                         .doc(docId)

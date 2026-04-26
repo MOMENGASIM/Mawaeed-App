@@ -122,7 +122,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           tr("لوحة تحكم الطبيب"),
-          style: GoogleFonts.elMessiri(
+          style: GoogleFonts.cairo(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -193,7 +193,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                           tr("مرحباً د. ") +
                               (FirebaseAuth.instance.currentUser?.displayName ??
                                   tr("طبيب")),
-                          style: GoogleFonts.elMessiri(
+                          style: GoogleFonts.cairo(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: primaryGreen,
@@ -236,7 +236,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
 
                 Text(
                   tr("طلبات الحجز المعلقة"),
-                  style: GoogleFonts.elMessiri(
+                  style: GoogleFonts.cairo(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -265,7 +265,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                 const SizedBox(height: 30),
                 Text(
                   tr("المواعيد المؤكدة"),
-                  style: GoogleFonts.elMessiri(
+                  style: GoogleFonts.cairo(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -448,7 +448,11 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
             ),
             currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.medical_services, size: 40, color: Color(0xFF2563EB)),
+              child: Icon(
+                Icons.medical_services,
+                size: 40,
+                color: Color(0xFF2563EB),
+              ),
             ),
             accountName: Text(
               tr("دكتور"),
