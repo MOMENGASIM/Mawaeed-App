@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'main.dart';
 import 'localization.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class DoctorDashboard extends StatefulWidget {
   const DoctorDashboard({super.key});
@@ -61,7 +64,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       }
 
       Map<String, dynamic> updateData = {
-        'status': status == "قبول" ? 'confirmed' : 'rejected',
+        'status': status == "قبول" ? 'awaiting_payment' : 'rejected',
       };
       if (appointmentTime != null) {
         updateData['appointmentTime'] = appointmentTime;
@@ -101,6 +104,59 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       }
     } catch (e) {
       debugPrint("خطأ في التحديث: $e");
+    }
+  }
+
+  // دالة اختيار ورفع الصورة الشخصية
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50, // لتقليل حجم الصورة وسرعة الرفع
+    );
+
+    if (image == null) return;
+
+    try {
+      File file = File(image.path);
+      String uid = FirebaseAuth.instance.currentUser!.uid;
+
+      // الرفع إلى Firebase Storage
+      Reference ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_pics')
+          .child('$uid.jpg');
+
+      SettableMetadata metadata = SettableMetadata(contentType: 'image/jpeg');
+      UploadTask uploadTask = ref.putFile(file, metadata);
+
+      TaskSnapshot snapshot = await uploadTask;
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      // تحديث الصورة في Firebase Auth
+      await FirebaseAuth.instance.currentUser?.updatePhotoURL(downloadUrl);
+
+      // تحديث الصورة في Firestore
+      await FirebaseFirestore.instance.collection('Doctors').doc(uid).update({
+        'profilePic': downloadUrl,
+      });
+
+      if (mounted) {
+        setState(() {}); // لتحديث الواجهة بالصورة الجديدة
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr("تم تحديث الصورة الشخصية بنجاح"))),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error uploading image: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr("فشل رفع الصورة: ") + e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -155,7 +211,11 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           }).toList();
           var confirmedDocs = allDocs.where((doc) {
             var data = doc.data() as Map<String, dynamic>;
-            return data['status'] == 'confirmed';
+            return [
+              'confirmed',
+              'awaiting_payment',
+              'awaiting_admin_approval',
+            ].contains(data['status']);
           }).toList();
 
           int count = pendingDocs.length;
@@ -446,16 +506,25 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                 colors: [Color(0xFF001529), Color(0xFF000B18)],
               ),
             ),
-            currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.medical_services,
-                size: 40,
-                color: Color(0xFF2563EB),
+            currentAccountPicture: GestureDetector(
+              onTap: _pickAndUploadImage,
+              child: CircleAvatar(
+                backgroundColor: Colors.white,
+                backgroundImage:
+                    FirebaseAuth.instance.currentUser?.photoURL != null
+                    ? NetworkImage(FirebaseAuth.instance.currentUser!.photoURL!)
+                    : null,
+                child: FirebaseAuth.instance.currentUser?.photoURL == null
+                    ? const Icon(
+                        Icons.camera_alt,
+                        size: 30,
+                        color: Color(0xFF2563EB),
+                      )
+                    : null,
               ),
             ),
             accountName: Text(
-              tr("دكتور"),
+              FirebaseAuth.instance.currentUser?.displayName ?? tr("دكتور"),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),

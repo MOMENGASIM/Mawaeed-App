@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'main.dart';
 import 'localization.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -17,6 +20,61 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   final Color adminColor = const Color(0xFF2563EB); // الأزرق المعتمد من اللوجو
   final Color navyColor = const Color(0xFF001529);
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  // دالة اختيار ورفع الصورة الشخصية للمسؤول
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+    );
+
+    if (image == null) return;
+
+    try {
+      File file = File(image.path);
+      String uid = FirebaseAuth.instance.currentUser!.uid;
+
+      Reference ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_pics')
+          .child('$uid.jpg');
+
+      SettableMetadata metadata = SettableMetadata(contentType: 'image/jpeg');
+      UploadTask uploadTask = ref.putFile(file, metadata);
+
+      TaskSnapshot snapshot = await uploadTask;
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      await FirebaseAuth.instance.currentUser?.updatePhotoURL(downloadUrl);
+
+      // تحديث في مجموعة المستخدمين (لأن المسؤول مخزن في Users)
+      await FirebaseFirestore.instance.collection('Users').doc(uid).update({
+        'profilePic': downloadUrl,
+      });
+
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr("تم تحديث الصورة الشخصية بنجاح"))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr("فشل رفع الصورة: ") + e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +248,39 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                     const SizedBox(height: 30),
 
-                    // 2. إدارة الأطباء (طلبات الانضمام)
+                    // 2. إدارة المدفوعات وتأكيد الحجوزات
+                    _buildHeader(tr("تأكيدات الحجوزات (المدفوعات)")),
+                    const SizedBox(height: 12),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('Appointments')
+                          .where('status', isEqualTo: 'awaiting_admin_approval')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Text(
+                            tr("لا توجد دفعات بانتظار التأكيد حالياً"),
+                            style: const TextStyle(color: Colors.grey),
+                          );
+                        }
+                        return Column(
+                          children: snapshot.data!.docs.map((doc) {
+                            var data = doc.data() as Map<String, dynamic>;
+                            return _buildPaymentApprovalTile(doc.id, data);
+                          }).toList(),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // 3. إدارة الأطباء (طلبات الانضمام)
                     _buildHeader(tr("طلبات انضمام أطباء جدد")),
                     const SizedBox(height: 12),
                     if (pendingDoctors.isEmpty)
@@ -212,7 +302,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                     const SizedBox(height: 30),
 
-                    // 3. الشكاوى والمقترحات
+                    // 4. الشكاوى والمقترحات
                     _buildHeader(tr("الشكاوى والمقترحات")),
                     const SizedBox(height: 12),
                     StreamBuilder<QuerySnapshot>(
@@ -364,6 +454,84 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  Widget _buildPaymentApprovalTile(String docId, Map<String, dynamic> data) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.blue.withAlpha(20),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.receipt_long, color: Colors.blue),
+        ),
+        title: Text(
+          data['patientName'] ?? tr("مريض"),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("${tr("مع دكتور:")} ${data['doctorName']}"),
+            const SizedBox(height: 4),
+            Text(
+              "${tr("رقم العملية:")} ${data['referenceNumber'] ?? tr("غير متوفر")}",
+              style: const TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.check_circle, color: Colors.green),
+              onPressed: () async {
+                await FirebaseFirestore.instance
+                    .collection('Appointments')
+                    .doc(docId)
+                    .update({
+                      'status': 'confirmed',
+                      'isConfirmedByAdmin': true,
+                    });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(tr("تم تأكيد الحجز بنجاح"))),
+                  );
+                }
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.cancel, color: Colors.red),
+              onPressed: () async {
+                await FirebaseFirestore.instance
+                    .collection('Appointments')
+                    .doc(docId)
+                    .update({
+                      'status': 'rejected',
+                      'isConfirmedByAdmin': false,
+                    });
+                if (mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(tr("تم رفض الحجز"))));
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // زر إجراء سريع
   Widget _buildAdminAction(IconData icon, String label) {
     return Container(
@@ -391,16 +559,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 colors: [Color(0xFF001529), Color(0xFF000B18)],
               ),
             ),
-            currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.admin_panel_settings,
-                size: 40,
-                color: Color(0xFF2563EB),
+            currentAccountPicture: GestureDetector(
+              onTap: _pickAndUploadImage,
+              child: CircleAvatar(
+                backgroundColor: Colors.white,
+                backgroundImage:
+                    FirebaseAuth.instance.currentUser?.photoURL != null
+                    ? NetworkImage(FirebaseAuth.instance.currentUser!.photoURL!)
+                    : null,
+                child: FirebaseAuth.instance.currentUser?.photoURL == null
+                    ? const Icon(
+                        Icons.admin_panel_settings,
+                        size: 40,
+                        color: Color(0xFF2563EB),
+                      )
+                    : null,
               ),
             ),
             accountName: Text(
-              tr("المسؤول"),
+              FirebaseAuth.instance.currentUser?.displayName ?? tr("المسؤول"),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),

@@ -7,6 +7,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'localization.dart';
 import 'notification_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
+import 'package:flutter/services.dart';
 
 class PatientDashboard extends StatefulWidget {
   const PatientDashboard({super.key});
@@ -16,6 +20,9 @@ class PatientDashboard extends StatefulWidget {
 }
 
 class _PatientDashboardState extends State<PatientDashboard> {
+  // حافظة للمواعيد التي تم جدولتها لمنع التكرار
+  final Set<String> _scheduledAppointmentIds = {};
+
   // الألوان الأساسية
   final Color primaryGreen = const Color(
     0xFF2563EB,
@@ -23,11 +30,64 @@ class _PatientDashboardState extends State<PatientDashboard> {
   final Color navyColor = const Color(0xFF001529);
   String searchQuery = "";
   final complaintController = TextEditingController();
+  final _refNumberController = TextEditingController();
 
   @override
   void dispose() {
     complaintController.dispose();
+    _refNumberController.dispose();
     super.dispose();
+  }
+
+  // دالة اختيار ورفع الصورة الشخصية
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+    );
+
+    if (image == null) return;
+
+    try {
+      File file = File(image.path);
+      String uid = FirebaseAuth.instance.currentUser!.uid;
+
+      Reference ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_pics')
+          .child('$uid.jpg');
+
+      SettableMetadata metadata = SettableMetadata(contentType: 'image/jpeg');
+      UploadTask uploadTask = ref.putFile(file, metadata);
+
+      // الحصول على النتيجة مباشرة من الـ Snapshot
+      TaskSnapshot snapshot = await uploadTask;
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      await FirebaseAuth.instance.currentUser?.updatePhotoURL(downloadUrl);
+
+      // تحديث في مجموعة المرضى/المستخدمين
+      await FirebaseFirestore.instance.collection('Users').doc(uid).update({
+        'profilePic': downloadUrl,
+      });
+
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr("تم تحديث الصورة الشخصية بنجاح"))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr("فشل رفع الصورة: ") + e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _submitComplaint() async {
@@ -100,6 +160,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
         'bookingTime': FieldValue.serverTimestamp(),
         'patientEmail': FirebaseAuth.instance.currentUser?.email,
         'patientName': FirebaseAuth.instance.currentUser?.displayName ?? 'مريض',
+        'fee': '20,000', // إضافة قيمة الحجز
+        'referenceNumber': null,
       });
 
       if (mounted) {
@@ -117,6 +179,228 @@ class _PatientDashboardState extends State<PatientDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(tr("فشل الحجز: ") + e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPaymentDialog(BuildContext context, String appointmentId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              tr("طرق الدفع المتاحة"),
+              style: GoogleFonts.cairo(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: primaryGreen,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              tr(
+                "يرجى تحويل مبلغ 20,000 جنيه سوداني عبر إحدى الطرق التالية ثم إرفاق رقم العملية:",
+              ),
+              style: GoogleFonts.cairo(
+                fontSize: 16,
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildPaymentMethodTile(
+              "بنكك (Bankak)",
+              "1234567",
+              Icons.account_balance,
+              Colors.green,
+            ),
+            _buildPaymentMethodTile(
+              "أوكاش (O-Kash)",
+              "0912345678",
+              Icons.phone_android,
+              Colors.orange,
+            ),
+            _buildPaymentMethodTile(
+              "فوري (Fawry)",
+              "987654321",
+              Icons.qr_code,
+              Colors.blue,
+            ),
+            const SizedBox(height: 25),
+            Text(
+              tr("أدخل رقم العملية (Reference Number):"),
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _refNumberController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: tr("مثلاً: 12345678"),
+                filled: true,
+                fillColor: Colors.grey.withAlpha(20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _submitReferenceNumber(appointmentId),
+                icon: const Icon(Icons.check_circle, color: Colors.white),
+                label: Text(
+                  tr("تأكيد إرسال الرقم"),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryGreen,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodTile(
+    String title,
+    String account,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.withAlpha(50)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 30),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  account,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.copy, color: color),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: account));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(tr("تم نسخ الرقم"))));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitReferenceNumber(String appointmentId) async {
+    String refNum = _refNumberController.text.trim();
+    if (refNum.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tr("الرجاء إدخال رقم العملية"))));
+      return;
+    }
+
+    try {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      // تحديث الموعد في Firestore برقم العملية
+      await FirebaseFirestore.instance
+          .collection('Appointments')
+          .doc(appointmentId)
+          .update({
+            'referenceNumber': refNum,
+            'status': 'awaiting_admin_approval',
+          });
+
+      if (mounted) {
+        Navigator.pop(context); // إغلاق مؤشر التحميل
+        Navigator.pop(context); // إغلاق نافذة الدفع
+        _refNumberController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              tr("تم إرسال رقم العملية بنجاح، بانتظار موافقة الإدارة"),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr("فشل الإرسال: ") + e.toString()),
             backgroundColor: Colors.red,
           ),
         );
@@ -210,13 +494,17 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 for (var doc in snapshot.data!.docs) {
                   var d = doc.data() as Map<String, dynamic>;
                   if (d['status'] == 'confirmed' &&
-                      d['appointmentTimestamp'] != null) {
+                      d['appointmentTimestamp'] != null &&
+                      !_scheduledAppointmentIds.contains(doc.id)) {
                     final ts = d['appointmentTimestamp'] as Timestamp;
                     NotificationService().scheduleAppointmentReminder(
                       appointmentId: doc.id,
                       appointmentDateTime: ts.toDate(),
                       doctorName: d['doctorName'] ?? 'الطبيب',
                     );
+
+                    // حفظ المعرف لمنع التكرار
+                    _scheduledAppointmentIds.add(doc.id);
                   }
                 }
 
@@ -234,11 +522,69 @@ class _PatientDashboardState extends State<PatientDashboard> {
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
-                      child: _buildStatusCard(
-                        data['doctorName'] ?? 'طبيب',
-                        timeStr,
-                        doc.id,
-                        status,
+                      child: Column(
+                        children: [
+                          _buildStatusCard(
+                            data['doctorName'] ?? 'طبيب',
+                            timeStr,
+                            doc.id,
+                            status,
+                          ),
+                          if ((status == 'pending' ||
+                                  status == 'awaiting_payment') &&
+                              data['referenceNumber'] == null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: ElevatedButton.icon(
+                                onPressed: () =>
+                                    _showPaymentDialog(context, doc.id),
+                                icon: const Icon(
+                                  Icons.payment,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  tr("إدخال رقم العملية وتأكيد الدفع"),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  minimumSize: const Size(double.infinity, 45),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            )
+                          else if (status == 'awaiting_admin_approval')
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withAlpha(30),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.blue),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.hourglass_empty,
+                                      color: Colors.blue,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      tr("بانتظار تأكيد الإدارة للمدفوعات"),
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     );
                   }).toList(),
@@ -541,6 +887,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
                       job,
                       style: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
+                    const SizedBox(height: 4),
+
+                    // تمت إزالة قيمة الحجز من هنا ونقلها لنافذة الدفع بطلب المستخدم
                   ],
                 ),
               ),
@@ -751,12 +1100,25 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 colors: [Color(0xFF001529), Color(0xFF000B18)],
               ),
             ),
-            currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.person, size: 40, color: Color(0xFF2563EB)),
+            currentAccountPicture: GestureDetector(
+              onTap: _pickAndUploadImage,
+              child: CircleAvatar(
+                backgroundColor: Colors.white,
+                backgroundImage:
+                    FirebaseAuth.instance.currentUser?.photoURL != null
+                    ? NetworkImage(FirebaseAuth.instance.currentUser!.photoURL!)
+                    : null,
+                child: FirebaseAuth.instance.currentUser?.photoURL == null
+                    ? const Icon(
+                        Icons.person,
+                        size: 40,
+                        color: Color(0xFF2563EB),
+                      )
+                    : null,
+              ),
             ),
             accountName: Text(
-              tr("مرحباً بك"),
+              FirebaseAuth.instance.currentUser?.displayName ?? tr("مريض"),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             accountEmail: Text(FirebaseAuth.instance.currentUser?.email ?? ""),
