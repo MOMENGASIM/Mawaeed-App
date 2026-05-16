@@ -516,13 +516,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     .collection('Appointments')
                     .doc(docId)
                     .update({
-                      'status': 'rejected',
+                      'status': 'awaiting_payment',
                       'isConfirmedByAdmin': false,
+                      'referenceNumber': null,
+                      'paymentError': 'رقم العملية غير موجود، الرجاء التأكد من عملية الدفع',
                     });
                 if (mounted) {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text(tr("تم رفض الحجز"))));
+                  ).showSnackBar(SnackBar(content: Text(tr("تم إخطار المريض للتأكد من الدفع"))));
                 }
               },
             ),

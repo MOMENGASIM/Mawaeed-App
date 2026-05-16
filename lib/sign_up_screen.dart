@@ -27,6 +27,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final specialtyController = TextEditingController();
   final cvController = TextEditingController();
   bool isLoading = false;
+  bool _obscurePasswords = true;
 
   @override
   void dispose() {
@@ -370,12 +371,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(
         controller: controller,
-        obscureText: isPass,
+        obscureText: isPass ? _obscurePasswords : false,
         maxLines: isPass ? 1 : maxLines,
         keyboardType: isNumber ? TextInputType.phone : TextInputType.text,
         decoration: InputDecoration(
           hintText: hint,
           prefixIcon: Icon(icon, color: primaryGreen),
+          suffixIcon: isPass
+              ? IconButton(
+                  icon: Icon(
+                    _obscurePasswords ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePasswords = !_obscurePasswords;
+                    });
+                  },
+                )
+              : null,
           filled: true,
           fillColor: Theme.of(context).cardColor,
           border: OutlineInputBorder(

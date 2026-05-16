@@ -316,8 +316,8 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                     return _buildRequestItem(
                       doc.id,
                       data['patientName'] ?? tr("مريض"),
-                      data['date'] ?? tr("اليوم"),
-                      data['reason'] ?? tr("فحص"),
+                      data['date'] ?? "",
+                      data['reason'] ?? "",
                       true,
                     );
                   }),
@@ -342,13 +342,13 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                 else
                   ...confirmedDocs.map((doc) {
                     var data = doc.data() as Map<String, dynamic>;
-                    String date = data['appointmentDate'] ?? tr("اليوم");
+                    String date = data['appointmentDate'] ?? "";
                     String time = data['appointmentTime'] ?? "";
                     return _buildRequestItem(
                       doc.id,
                       data['patientName'] ?? tr("مريض"),
                       date,
-                      time.isNotEmpty ? time : tr("فحص"),
+                      time,
                       false,
                     );
                   }),
@@ -423,10 +423,17 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                       name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    Text(
-                      "$time - $reason",
-                      style: const TextStyle(color: Colors.grey, fontSize: 13),
-                    ),
+                    if (time.isNotEmpty || reason.isNotEmpty)
+                      Text(
+                        [
+                          if (time.isNotEmpty) time,
+                          if (reason.isNotEmpty) reason,
+                        ].join(" - "),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                        ),
+                      ),
                   ],
                 ),
               ),

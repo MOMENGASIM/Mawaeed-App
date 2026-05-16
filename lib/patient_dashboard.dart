@@ -238,13 +238,13 @@ class _PatientDashboardState extends State<PatientDashboard> {
               "بنكك (Bankak)",
               "1234567",
               Icons.account_balance,
-              Colors.green,
+              Colors.red,
             ),
             _buildPaymentMethodTile(
               "أوكاش (O-Kash)",
               "0912345678",
               Icons.phone_android,
-              Colors.orange,
+              Colors.green,
             ),
             _buildPaymentMethodTile(
               "فوري (Fawry)",
@@ -380,6 +380,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
           .update({
             'referenceNumber': refNum,
             'status': 'awaiting_admin_approval',
+            'paymentError': FieldValue.delete(),
           });
 
       if (mounted) {
@@ -518,6 +519,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
                           "موعد مؤكد: ${data['appointmentDate'] ?? ''} ${data['appointmentTime'] ?? ''}";
                     } else if (status == 'rejected') {
                       timeStr = tr("عذراً، تم رفض طلب الموعد من قبل الطبيب");
+                    } else if (status == 'awaiting_payment') {
+                      timeStr = tr("تم تأكيد الموعد مبدئياً، يرجى إتمام الدفع");
                     }
 
                     return Padding(
@@ -530,8 +533,24 @@ class _PatientDashboardState extends State<PatientDashboard> {
                             doc.id,
                             status,
                           ),
-                          if ((status == 'pending' ||
-                                  status == 'awaiting_payment') &&
+                          if (data['paymentError'] != null &&
+                              data['referenceNumber'] == null)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: 8.0,
+                                bottom: 4.0,
+                              ),
+                              child: Text(
+                                data['paymentError'],
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          if (status == 'awaiting_payment' &&
                               data['referenceNumber'] == null)
                             Padding(
                               padding: const EdgeInsets.only(top: 8.0),
