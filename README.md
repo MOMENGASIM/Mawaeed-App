@@ -1,16 +1,19 @@
-# app
+Title:
+Remote medical appointment for Makkah Eye hospital 
 
-A new Flutter project.
+Short description:
+Mobile  application for managing and booking appoinments for makkah eye hospital.
 
-## Getting Started
+Features:
+1.user authentication.
+2.local notification for patient.
+3. appointment booking & cancelation.
+4. three user dashboards ( doctor ,patient ,admin).
+  
 
-This project is a starting point for a Flutter application.
+technologies used:
+1. flutter framework.
+2. dart language.
+3. firebase (BaaS).
 
-A few resources to get you started if this is your first Flutter project:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
