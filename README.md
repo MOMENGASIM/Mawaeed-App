@@ -2,21 +2,21 @@
 
 A comprehensive Flutter mobile application designed for managing and booking medical appointments for Makkah Eye Hospital.
 
-📱 About The Project
+About The Project
 
 Mawaeed simplifies the healthcare reservation process by connecting patients, doctors, and administrators through a unified, seamless mobile experience. The application streamlines appointment scheduling, reduces waiting times, and enhances patient communication through real-time updates and local notifications.
 
-✨ Key Features
+ Key Features
+ 
+ Multi-Role User Authentication: Secure sign-in and access control tailored for different user roles.
 
-🔐 Multi-Role User Authentication: Secure sign-in and access control tailored for different user roles.
+ Three Interactive Dashboards: Specialized interfaces for Patients, Doctors, and Administrators.
 
-📊 Three Interactive Dashboards: Specialized interfaces for Patients, Doctors, and Administrators.
+ Appointment Management: Easy booking, rescheduling, and cancellation of medical appointments.
 
-📅 Appointment Management: Easy booking, rescheduling, and cancellation of medical appointments.
+ Local Notifications: Automated reminders sent to patients regarding upcoming appointments and updates.
 
-🔔 Local Notifications: Automated reminders sent to patients regarding upcoming appointments and updates.
-
-🛠️ Tech Stack & Architecture
+ Tech Stack & Architecture
 
 Framework: Flutter
 
@@ -24,7 +24,7 @@ Language: Dart
 
 Backend as a Service (BaaS): Firebase (Authentication, Firestore, Cloud Messaging)
 
-🚀 Getting Started
+ Getting Started
 
 Follow these steps to run the project locally:
 
