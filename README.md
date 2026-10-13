@@ -35,21 +35,18 @@ git clone https://github.com/MOMENGASIM/Mawaeed-App.git
 ```
 
 Navigate to the project directory:
-```markdown
 ```bash
 cd Mawaeed-App
 ```
 
 
 Install dependencies:
-```markdpwn
 ```bash 
 flutter pub get
 ```
 
 
 Run the app:
-```markdown
 ```bash 
 flutter run
 ```
