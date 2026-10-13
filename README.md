@@ -16,6 +16,14 @@ Mawaeed simplifies the healthcare reservation process by connecting patients, do
 
  Local Notifications: Automated reminders sent to patients regarding upcoming appointments and updates.
 
+ Screenshots:
+ <img width="540" height="1200" alt="WhatsApp Image 2026-10-13 at 11 20 21 AM" src="https://github.com/user-attachments/assets/de67b8ae-6323-444b-8bc7-05945358e522" />
+<img width="1080" height="2400" alt="WhatsApp Image " src="https://github.com/user-attachments/assets/02a9be32-cf65-4b34-b648-c5fbd43da0b1" />
+<img width="1080" height="2400" alt="WhatsApp Image 20jpeg" src="https://github.com/user-attachments/assets/b702ff75-2d5b-4b6e-ab9b-76b9b96c183e" />
+<img width="540" height="1200" alt="WhatsApp Image 2026-10-13 at 11 20 20 AM" src="https://github.com/user-attachments/assets/63b8352a-15c5-4912-9037-ef4c320a1122" />
+<img width="540" height="1200" alt="WhatsApp Image 2026-10-13 " src="https://github.com/user-attachments/assets/6f1ee0f5-6522-457e-889c-66e8de4e32eb" />
+
+
  Tech Stack & Architecture
 
 Framework: Flutter
