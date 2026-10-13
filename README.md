@@ -38,18 +38,21 @@ Navigate to the project directory:
 ```markdown
 ```bash
 cd Mawaeed-App
+```
 
 
 Install dependencies:
 ```markdpwn
 ```bash 
 flutter pub get
+```
 
 
 Run the app:
 ```markdown
 ```bash 
 flutter run
+```
 
 
 👤 Author
