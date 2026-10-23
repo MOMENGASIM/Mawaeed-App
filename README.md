@@ -1,6 +1,6 @@
  Mawaeed (مواعيد) - Remote Medical Appointment App
 
-A comprehensive Flutter mobile application designed for managing and booking medical appointments for Makkah Eye Hospital.
+A comprehensive Flutter mobile application designed for managing and booking medical appointments in clinics and hospitals.Built as graduation project.
 
 About The Project
 
